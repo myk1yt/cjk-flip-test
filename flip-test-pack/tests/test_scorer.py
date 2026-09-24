@@ -1113,5 +1113,79 @@ class TestFairnessRegression(unittest.TestCase):
         self.assertAlmostEqual(sc["avg_points"] / sc["max_points"] * 100.0, sc["accuracy"], places=6)
 
 
+class TestI18nAndDashboardEnhancements(unittest.TestCase):
+    """Verify i18n localization (EN default + KO), 5-slot comparison engine, and 2-depth accordion."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.master_path = PACK_DIR / "checks_master.json"
+        self.responses_dir = Path(self.temp_dir) / "responses"
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def test_markdown_summary_i18n_en_and_ko(self):
+        master = sr.load_master_checks(self.master_path)
+        p_dir = self.responses_dir / "test_model"
+        p_dir.mkdir(parents=True)
+        items = [f"=== [{pid}] ===\n⟪\n{master['prompts'][pid]['expected_marker_content']}\n⟫" for pid in sorted(master["prompts"].keys())]
+        (p_dir / "MEGA.md").write_text("\n\n".join(items), encoding="utf-8")
+
+        results = sr.run_scoring(self.master_path, self.responses_dir)
+
+        # English (default)
+        md_en = sr.format_summary_markdown(results, lang="en")
+        self.assertIn("## 1. Category-Level Accuracy Matrix", md_en)
+        self.assertIn("| Category |", md_en)
+        self.assertIn("Language Identity Flip", md_en)
+
+        # Korean
+        md_ko = sr.format_summary_markdown(results, lang="ko")
+        self.assertIn("## 1. 카테고리별 정확도 매트릭스", md_ko)
+        self.assertIn("| 카테고리 |", md_ko)
+        self.assertIn("F1_언어정체성플립", md_ko)
+
+    def test_html_dashboard_5_slots_and_2_depth_accordion(self):
+        master = sr.load_master_checks(self.master_path)
+        # Create 2 providers: one with 1 failure to test 2-depth accordion
+        p1_dir = self.responses_dir / "model_a"
+        p1_dir.mkdir(parents=True)
+        items1 = [f"=== [{pid}] ===\n⟪\n{master['prompts'][pid]['expected_marker_content']}\n⟫" for pid in sorted(master["prompts"].keys())]
+        (p1_dir / "MEGA.md").write_text("\n\n".join(items1), encoding="utf-8")
+
+        p2_dir = self.responses_dir / "model_b"
+        p2_dir.mkdir(parents=True)
+        items2 = []
+        for pid in sorted(master["prompts"].keys()):
+            ans = master["prompts"][pid]["expected_marker_content"]
+            if pid == "T06":
+                ans = ans.replace("龍", "龙")
+            items2.append(f"=== [{pid}] ===\n⟪\n{ans}\n⟫")
+        (p2_dir / "MEGA.md").write_text("\n\n".join(items2), encoding="utf-8")
+
+        results = sr.run_scoring(self.master_path, self.responses_dir)
+        html_path = Path(self.temp_dir) / "report.html"
+        html_content = sr.generate_html_report(results, html_path)
+
+        # 1. Real-time language switch controls
+        self.assertIn("lang-btn-en", html_content)
+        self.assertIn("lang-btn-ko", html_content)
+        self.assertIn("setLanguage", html_content)
+
+        # 2. 5-slot comparison selector
+        self.assertIn('id="comparison-section"', html_content)
+        self.assertIn('id="comp-slot-0"', html_content)
+        self.assertIn('id="comp-slot-1"', html_content)
+        self.assertIn('id="comp-slot-2"', html_content)
+        self.assertIn('id="comp-slot-3"', html_content)
+        self.assertIn('id="comp-slot-4"', html_content)
+        self.assertIn('updateComparison', html_content)
+
+        # 3. 2-depth hierarchical failure accordion
+        self.assertIn("provider-fail-card", html_content)
+        self.assertIn("prompt-fail-group", html_content)
+        self.assertIn("toggleAllAccordions", html_content)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -757,102 +757,227 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                 
     return results
 
+
 # ==============================================================================
-# 4. Formatted Reporting (stdout + Markdown + CSV)
+# 4. Formatted Reporting (stdout + Markdown + CSV + HTML Dashboard)
 # ==============================================================================
 
-def format_summary_markdown(results: dict) -> str:
-    """Generate professional Markdown summary."""
-    providers = results["providers"]
-    categories = results["categories"]
+CATEGORY_TRANSLATIONS = {
+    "en": {
+        "F1": "Language Identity Flip",
+        "F3": "Glyph Transformation",
+        "F6": "Precision String Manipulation",
+        "F7": "Long-Context Exact Citation",
+        "F8": "Output Format Constraints",
+        "F4": "Round-Trip Translation",
+        "F9": "Rare Hanzi & Classical Idioms",
+        "F10": "Multi-Step Reasoning",
+    },
+    "ko": {
+        "F1": "언어정체성플립",
+        "F3": "자형변환",
+        "F6": "문자열정밀조작",
+        "F7": "장문정확인용",
+        "F8": "출력형식제약",
+        "F4": "회귀번역",
+        "F9": "희귀한자숙어",
+        "F10": "다단계추론",
+    }
+}
+
+def format_category_name(cat: str, lang: str = "en") -> str:
+    """Return localized category label e.g. 'F1: Language Identity Flip' or 'F1_언어정체성플립'."""
+    code = cat.split("_")[0]
+    if lang == "ko":
+        name = CATEGORY_TRANSLATIONS["ko"].get(code, cat.split("_")[1] if "_" in cat else cat)
+        return f"{code}_{name}"
+    else:
+        name = CATEGORY_TRANSLATIONS["en"].get(code, cat.split("_")[1] if "_" in cat else cat)
+        return f"{code}: {name}"
+
+def format_summary_markdown(results: dict, lang: str = "en") -> str:
+    """Generate professional Markdown summary in English (default) or Korean."""
+    providers = results.get("providers", [])
+    categories = results.get("categories", [])
     is_runs_mode = results.get("is_runs_mode", False)
+    is_ko = (lang == "ko")
     
-    avg_note = " (회차 평균 / Run Average)" if is_runs_mode else ""
-    
-    lines = [
-        "# Zoo Code Custom Mode: CJK-Flip Evaluation Summary",
-        "",
-        "> **측정 대상 명명**: 본 결과는 '모델 품질'이 아니라 **'동일 하네스 조건에서의 프로바이더 간 출력 차이'**를 나타냅니다.",
-        ""
-    ]
-    
-    if results.get("truncation_warnings"):
-        lines.append("## ⚠️ 토큰 절단 진단 경고 (Truncation Diagnostic Warnings)")
-        lines.append("")
-        for p, w_info in results["truncation_warnings"].items():
-            lines.append(f"> **{p}**: {w_info['message']} (누락 문항: {w_info['first_missing']} 외 {w_info['missing_count']-1}개)")
-        lines.append("")
-
-    lines.extend([
-        f"## 1. 카테고리별 정확도 매트릭스{avg_note}",
-        ""
-    ])
-    
-    if not providers:
-        lines.append("평가 대상 프로바이더 응답 파일이 발견되지 않았습니다.")
-        return "\n".join(lines)
+    if is_ko:
+        avg_note = " (회차 평균)" if is_runs_mode else ""
+        lines = [
+            "# Zoo Code Custom Mode: CJK-Flip 평가 결과 요약",
+            "",
+            "> **측정 대상 명명**: 본 결과는 '모델 품질'이 아니라 **'동일 하네스 조건에서의 프로바이더 간 출력 차이'**를 나타냅니다.",
+            ""
+        ]
         
-    header = "| 카테고리 | " + " | ".join([f"**{p}**" for p in providers]) + " |"
-    sep = "| :--- | " + " | ".join([":---:" for _ in providers]) + " |"
-    lines.append(header)
-    lines.append(sep)
-    
-    for cat in categories:
-        row = [f"`{cat}`"]
-        for p in providers:
-            pct = results["provider_scores"][p]["category_scores"][cat]["pct"]
-            row.append(f"{pct:.1f}%")
-        lines.append("| " + " | ".join(row) + " |")
-        
-    # Total row
-    tot_label = "**전체 정확도 (Run Average)**" if is_runs_mode else "**전체 정확도 (Overall)**"
-    tot_row = [tot_label]
-    for p in providers:
-        tot_acc = results["provider_scores"][p]["accuracy"]
-        tot_row.append(f"**{tot_acc:.2f}%**")
-    lines.append("| " + " | ".join(tot_row) + " |")
-    lines.append("")
-    
-    # Pairwise comparison
-    if results["pairwise_diff"]:
-        lines.append("## 2. 프로바이더 쌍별 미세 차이 분석 (%p)")
-        lines.append("")
-        for pair_name, diff_data in results["pairwise_diff"].items():
-            lines.append(f"### ◈ {pair_name}")
-            lines.append(f"- **전체 편차**: **{diff_data['overall_diff_pp']:+.2f}%p**")
+        if results.get("truncation_warnings"):
+            lines.append("## ⚠️ 토큰 절단 진단 경고 (Truncation Diagnostic Warnings)")
             lines.append("")
-            lines.append("| 카테고리 | 편차 (%p) |")
+            for p, w_info in results["truncation_warnings"].items():
+                first_m = w_info.get('first_missing', '')
+                cnt = w_info.get('missing_count', 0)
+                msg = w_info.get('message', '')
+                lines.append(f"> **{p}**: {msg} (누락 문항: {first_m} 외 {cnt-1}개)")
+            lines.append("")
+
+        lines.extend([
+            f"## 1. 카테고리별 정확도 매트릭스{avg_note}",
+            ""
+        ])
+        
+        if not providers:
+            lines.append("평가 대상 프로바이더 응답 파일이 발견되지 않았습니다.")
+            return "\n".join(lines)
+            
+        header = "| 카테고리 | " + " | ".join([f"**{p}**" for p in providers]) + " |"
+        sep = "| :--- | " + " | ".join([":---:" for _ in providers]) + " |"
+        lines.append(header)
+        lines.append(sep)
+        
+        for cat in categories:
+            cat_label = format_category_name(cat, "ko")
+            row = [f"`{cat_label}`"]
+            for p in providers:
+                pct = results["provider_scores"][p]["category_scores"][cat]["pct"]
+                row.append(f"{pct:.1f}%")
+            lines.append("| " + " | ".join(row) + " |")
+            
+        tot_label = "**전체 정확도 (회차 평균)**" if is_runs_mode else "**전체 정확도 (Overall)**"
+        tot_row = [tot_label]
+        for p in providers:
+            tot_acc = results["provider_scores"][p]["accuracy"]
+            tot_row.append(f"**{tot_acc:.2f}%**")
+        lines.append("| " + " | ".join(tot_row) + " |")
+        lines.append("")
+        
+        if results.get("pairwise_diff"):
+            lines.append("## 2. 프로바이더 쌍별 미세 차이 분석 (%p)")
+            lines.append("")
+            for pair_name, diff_data in results["pairwise_diff"].items():
+                lines.append(f"### ◈ {pair_name}")
+                lines.append(f"- **전체 편차**: **{diff_data['overall_diff_pp']:+.2f}%p**")
+                lines.append("")
+                lines.append("| 카테고리 | 편차 (%p) |")
+                lines.append("| :--- | :---: |")
+                for cat, c_diff in diff_data["category_diffs"].items():
+                    cat_label = format_category_name(cat, "ko")
+                    lines.append(f"| `{cat_label}` | {c_diff:+.1f}%p |")
+                lines.append("")
+                
+        has_multi_runs = is_runs_mode or any(len(runs) > 1 for runs in results.get("provider_runs", {}).values())
+        if has_multi_runs and results.get("provider_runs"):
+            lines.append("## 3. 다회차 실행 결과 및 회차 평균 (Multi-Run Breakdown & Run Average)")
+            lines.append("")
+            lines.append("| 프로바이더 | 회차 (Run) | 점수 | 정확도 (%) |")
+            lines.append("| :--- | :---: | :---: | :---: |")
+            for p, runs_dict in results["provider_runs"].items():
+                run_accs = []
+                for run_id, r_stats in sorted(runs_dict.items()):
+                    lines.append(f"| {p} | `{run_id}` | {r_stats['total_points']:.1f} / {r_stats['max_points']:.1f} | {r_stats['accuracy']:.2f}% |")
+                    run_accs.append(r_stats['accuracy'])
+                avg_acc = sum(run_accs) / len(run_accs) if run_accs else 0.0
+                lines.append(f"| **{p}** | **회차 평균** | - | **{avg_acc:.2f}%** |")
+            lines.append("")
+
+        if results.get("run_disagreements"):
+            lines.append("## 4. 회차 간 출력 불일치율 (Cross-Run Disagreement Rate)")
+            lines.append("")
+            lines.append("| 프로바이더 | 회차 간 불일치율 (%) |")
             lines.append("| :--- | :---: |")
-            for cat, c_diff in diff_data["category_diffs"].items():
-                lines.append(f"| `{cat}` | {c_diff:+.1f}%p |")
+            for p, rate in results["run_disagreements"].items():
+                lines.append(f"| **{p}** | {rate:.2f}% |")
             lines.append("")
             
-    # Multi-run breakdown and Run Average
-    has_multi_runs = is_runs_mode or any(len(runs) > 1 for runs in results.get("provider_runs", {}).values())
-    if has_multi_runs and results.get("provider_runs"):
-        lines.append("## 3. 다회차 실행 결과 및 회차 평균 (Multi-Run Breakdown & Run Average)")
-        lines.append("")
-        lines.append("| 프로바이더 | 회차 (Run) | 점수 | 정확도 (%) |")
-        lines.append("| :--- | :---: | :---: | :---: |")
-        for p, runs_dict in results["provider_runs"].items():
-            run_accs = []
-            for run_id, r_stats in sorted(runs_dict.items()):
-                lines.append(f"| {p} | `{run_id}` | {r_stats['total_points']:.1f} / {r_stats['max_points']:.1f} | {r_stats['accuracy']:.2f}% |")
-                run_accs.append(r_stats['accuracy'])
-            avg_acc = sum(run_accs) / len(run_accs) if run_accs else 0.0
-            lines.append(f"| **{p}** | **회차 평균 (Average)** | - | **{avg_acc:.2f}%** |")
-        lines.append("")
+    else:
+        avg_note = " (Run Average)" if is_runs_mode else ""
+        lines = [
+            "# Zoo Code Custom Mode: CJK-Flip Evaluation Summary",
+            "",
+            "> **Measurement Target Declaration**: These results reflect **'output divergence across providers under identical harness conditions'** (동일 하네스 조건에서의 프로바이더 간 출력 차이), NOT 'general model capability'.",
+            ""
+        ]
+        
+        if results.get("truncation_warnings"):
+            lines.append("## ⚠️ Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)")
+            lines.append("")
+            for p, w_info in results["truncation_warnings"].items():
+                rid = w_info.get("run", "")
+                run_tag = f"[{rid}] " if is_runs_mode and rid else ""
+                first_m = w_info.get('first_missing', '')
+                cnt = w_info.get('missing_count', 0)
+                msg = w_info.get('message', '')
+                lines.append(f"> **{p}**: ⚠️ {run_tag}Output truncated starting at prompt {first_m}: Increase Max Output Tokens to 4,096–8,192 ({msg})")
+            lines.append("")
 
-    # Cross-Run Disagreement Rate
-    if results["run_disagreements"]:
-        lines.append("## 4. 회차 간 출력 불일치율 (Cross-Run Disagreement Rate)")
-        lines.append("")
-        lines.append("| 프로바이더 | 회차 간 불일치율 (%) |")
-        lines.append("| :--- | :---: |")
-        for p, rate in results["run_disagreements"].items():
-            lines.append(f"| **{p}** | {rate:.2f}% |")
+        lines.extend([
+            f"## 1. Category-Level Accuracy Matrix{avg_note}",
+            ""
+        ])
+        
+        if not providers:
+            lines.append("No provider response files were found to evaluate.")
+            return "\n".join(lines)
+            
+        header = "| Category | " + " | ".join([f"**{p}**" for p in providers]) + " |"
+        sep = "| :--- | " + " | ".join([":---:" for _ in providers]) + " |"
+        lines.append(header)
+        lines.append(sep)
+        
+        for cat in categories:
+            cat_label = format_category_name(cat, "en")
+            row = [f"`{cat_label}`"]
+            for p in providers:
+                pct = results["provider_scores"][p]["category_scores"][cat]["pct"]
+                row.append(f"{pct:.1f}%")
+            lines.append("| " + " | ".join(row) + " |")
+            
+        tot_label = "**Overall Accuracy (Run Average)**" if is_runs_mode else "**Overall Accuracy**"
+        tot_row = [tot_label]
+        for p in providers:
+            tot_acc = results["provider_scores"][p]["accuracy"]
+            tot_row.append(f"**{tot_acc:.2f}%**")
+        lines.append("| " + " | ".join(tot_row) + " |")
         lines.append("")
         
+        if results.get("pairwise_diff"):
+            lines.append("## 2. Pairwise Provider Divergence Analysis (%p)")
+            lines.append("")
+            for pair_name, diff_data in results["pairwise_diff"].items():
+                lines.append(f"### ◈ {pair_name}")
+                lines.append(f"- **Overall Delta**: **{diff_data['overall_diff_pp']:+.2f}%p**")
+                lines.append("")
+                lines.append("| Category | Delta (%p) |")
+                lines.append("| :--- | :---: |")
+                for cat, c_diff in diff_data["category_diffs"].items():
+                    cat_label = format_category_name(cat, "en")
+                    lines.append(f"| `{cat_label}` | {c_diff:+.1f}%p |")
+                lines.append("")
+                
+        has_multi_runs = is_runs_mode or any(len(runs) > 1 for runs in results.get("provider_runs", {}).values())
+        if has_multi_runs and results.get("provider_runs"):
+            lines.append("## 3. Multi-Run Breakdown & Run Average (다회차 실행 결과 및 회차 평균)")
+            lines.append("")
+            lines.append("| Provider | Run | Score | Accuracy (%) |")
+            lines.append("| :--- | :---: | :---: | :---: |")
+            for p, runs_dict in results["provider_runs"].items():
+                run_accs = []
+                for run_id, r_stats in sorted(runs_dict.items()):
+                    lines.append(f"| {p} | `{run_id}` | {r_stats['total_points']:.1f} / {r_stats['max_points']:.1f} | {r_stats['accuracy']:.2f}% |")
+                    run_accs.append(r_stats['accuracy'])
+                avg_acc = sum(run_accs) / len(run_accs) if run_accs else 0.0
+                lines.append(f"| **{p}** | **Run Average** | - | **{avg_acc:.2f}%** |")
+            lines.append("")
+
+        if results.get("run_disagreements"):
+            lines.append("## 4. Cross-Run Disagreement Rate (회차 간 출력 불일치율)")
+            lines.append("")
+            lines.append("| Provider | Disagreement Rate (%) |")
+            lines.append("| :--- | :---: |")
+            for p, rate in results["run_disagreements"].items():
+                lines.append(f"| **{p}** | {rate:.2f}% |")
+            lines.append("")
+            
     return "\n".join(lines)
 
 def write_failures_csv(failures: list, csv_path: Path):
@@ -860,7 +985,7 @@ def write_failures_csv(failures: list, csv_path: Path):
     if not failures:
         if csv_path.exists():
             csv_path.unlink()
-            print(f"[INFO] 실패 0건: 이전 실행의 {csv_path.name} 삭제 (stale 산출물 정리)")
+            print(f"[INFO] Zero failures: deleted stale {csv_path.name} from previous run")
         return
     with open(csv_path, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[
@@ -870,9 +995,11 @@ def write_failures_csv(failures: list, csv_path: Path):
         for row in failures:
             writer.writerow(row)
 
-def generate_html_report(results: dict, output_path: Path) -> str:
+def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> str:
     """
-    Generate responsive, standalone HTML5 visual dashboard with embedded SVG charts.
+    Generate modern, responsive HTML5 visual dashboard with embedded SVG charts,
+    real-time client-side EN/KO i18n switcher, 5-slot interactive model comparison engine,
+    and 2-depth hierarchical failure accordion.
     Zero external dependencies (pure Python standard library).
     """
     providers = results.get("providers", [])
@@ -885,11 +1012,12 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     failures = results.get("failures", [])
     pairwise_diff = results.get("pairwise_diff", {})
     run_disagreements = results.get("run_disagreements", {})
+    all_pass_ko_title = "🎉 전수 체크 100% 통과" if (providers and not failures) else ""
 
-    COLORS = ["#2563eb", "#10b981", "#d97706", "#8b5cf6", "#ec4899", "#06b6d4"]
+    COLORS = ["#2563eb", "#10b981", "#d97706", "#8b5cf6", "#ec4899", "#06b6d4", "#f43f5e", "#84cc16", "#0ea5e9", "#eab308"]
     provider_colors = {p: COLORS[i % len(COLORS)] for i, p in enumerate(providers)}
 
-    # Shared grouped-bar plot geometry for the accuracy charts
+    # Plot geometry for SVG charts
     plot_w = 870.0
     margin_left = 60.0
     y_0 = 350.0
@@ -906,11 +1034,10 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             )
         return lines
 
-    # 1. Category Grouped Bar Chart SVG (one bar per provider, runs-average accuracy)
+    # 1. Overall Category Grouped Bar Chart SVG (All providers)
     cat_plot_h = 290.0
     grid_lines = acc_grid_lines(cat_plot_h, 100.0, (0, 20, 40, 60, 80, 100))
 
-    # Categories slots
     num_cats = len(categories) if categories else 1
     slot_w = plot_w / float(num_cats)
     num_p = max(1, len(providers))
@@ -925,7 +1052,8 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     for cat_i, cat in enumerate(categories):
         slot_x = margin_left + cat_i * slot_w
         cat_short_code = cat.split("_")[0]
-        cat_short_name = cat.split("_")[1] if "_" in cat else cat
+        cat_en_name = CATEGORY_TRANSLATIONS["en"].get(cat_short_code, cat.split("_")[1] if "_" in cat else cat)
+        cat_ko_name = CATEGORY_TRANSLATIONS["ko"].get(cat_short_code, cat.split("_")[1] if "_" in cat else cat)
 
         for p_i, p in enumerate(providers):
             pct = provider_scores.get(p, {}).get("category_scores", {}).get(cat, {}).get("pct", 0.0)
@@ -935,7 +1063,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             col = provider_colors.get(p, "#2563eb")
             svg_cat_bars.append(
                 f'<rect x="{bx:.1f}" y="{by:.1f}" width="{bar_w:.1f}" height="{bar_h:.1f}" rx="4" fill="{col}">'
-                f'<title>{html.escape(p)}: {cat} = {pct:.1f}%</title></rect>'
+                f'<title>{html.escape(p)}: {cat_short_code} ({cat_en_name}) = {pct:.1f}%</title></rect>'
             )
             if bar_w >= 20.0:
                 val_y = max(15.0, by - 6.0)
@@ -952,10 +1080,9 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">{cat_short_code}</text>'
         )
         cat_labels.append(
-            f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 38}" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">{cat_short_name}</text>'
+            f'<text class="cat-label-sub" data-en="{html.escape(cat_en_name[:16])}" data-ko="{html.escape(cat_ko_name[:16])}" x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 38}" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.75">{html.escape(cat_en_name[:16])}</text>'
         )
 
-    # HTML Legend (Responsive, non-clipped)
     html_legend_items = []
     for p in providers:
         col = provider_colors.get(p, "#2563eb")
@@ -974,11 +1101,11 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     </svg>
     """
 
-    # 2. Per-Run Grouped Bar Chart SVG (r1/r2/r3 shade bars + run-average marker line)
+    # 2. Per-Run Grouped Bar Chart SVG (r1/r2/r3 shade bars + run-average marker)
     svg_run_chart_section = ""
     if providers and provider_runs:
         run_plot_h = 285.0
-        run_y_max = 110.0  # headroom above 100% keeps the average marker label clear of bar tops
+        run_y_max = 110.0
         run_grid = acc_grid_lines(run_plot_h, run_y_max, (0, 20, 40, 60, 80, 100))
         run_slot_w = plot_w / float(len(providers))
         run_shades = (1.0, 0.62, 0.35)
@@ -1023,7 +1150,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                 f'<circle cx="{cx:.1f}" cy="{avg_y:.1f}" r="4.5" fill="{col}" stroke="currentColor" stroke-width="1.5" />'
             )
             run_markers.append(
-                f'<text x="{cx:.1f}" y="{avg_y - 10:.1f}" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">평균 {avg_acc:.2f}%</text>'
+                f'<text x="{cx:.1f}" y="{avg_y - 10:.1f}" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">Avg {avg_acc:.2f}%</text>'
             )
 
             p_short = p if len(p) <= 20 else p[:18] + "…"
@@ -1049,8 +1176,8 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h3>📈 회차별 정확도 그룹 차트 (Per-Run Accuracy)</h3>
-                    <span class="badge badge-accent">r1 / r2 / r3 명도 막대 + 회차 평균 마커 (%)</span>
+                    <h3 data-i18n="run_chart_title">📈 Per-Run Accuracy Grouped Chart</h3>
+                    <span class="badge badge-accent" data-i18n="run_chart_badge">r1 / r2 / r3 Shade Bars + Run Average Marker (%)</span>
                 </div>
                 {run_chart_legend}
             </div>
@@ -1063,9 +1190,385 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         </div>
         """
 
-    # 2. Pairwise Divergence Chart SVG (All pairs rendered)
-    pairwise_charts_html = []
+    # 3. Provider Summary Cards
+    cards_html = []
+    if not providers:
+        cards_html.append("""
+        <div class="card empty-card" style="text-align: center; padding: 40px 20px; grid-column: 1 / -1;">
+            <h3 style="font-size: 20px; margin-bottom: 10px; color: var(--warning);" data-i18n="empty_title" data-ko="평가 대상 응답 파일 없음">⚠️ No Evaluation Responses Found</h3>
+            <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto 16px;" data-i18n="empty_desc">
+                Neither <code>responses/{provider}/MEGA.md</code> nor <code>responses/{provider}/T01.md</code> were found.
+            </p>
+        </div>
+        """)
+    for p in providers:
+        sc = provider_scores.get(p, {})
+        acc = sc.get("accuracy", 0.0)
+        mode = provider_modes.get(p, "individual")
+        mode_badge = (
+            '<span class="badge badge-mega" data-ko="메가 배치">⚡ Mega-Batch</span>' 
+            if mode == "mega" 
+            else '<span class="badge badge-individual" data-ko="개별 파일">📄 Individual</span>'
+        )
+        
+        status_pill = (
+            '<span class="status-pill status-perfect">🏆 Lossless (100%)</span>' if acc >= 99.9 else (
+                '<span class="status-pill status-high">⚡ High Quality</span>' if acc >= 95.0 else (
+                    '<span class="status-pill status-warning">⚠️ Minor Loss</span>' if acc >= 90.0 else
+                    '<span class="status-pill status-danger">❌ Degraded</span>'
+                )
+            )
+        )
+
+        p_fails = [f for f in failures if f.get("provider") == p]
+
+        if is_runs_mode:
+            pts_label = "Average Score (Run Avg)"
+            pts_earned = sc.get("avg_points", sc.get("total_points", 0.0))
+        else:
+            pts_label = "Total Score"
+            pts_earned = sc.get("total_points", 0.0)
+
+        runs_breakdown_html = ""
+        p_runs = provider_runs.get(p, {})
+        if len(p_runs) > 1 or is_runs_mode:
+            run_items = []
+            for rid, rst in sorted(p_runs.items()):
+                run_items.append(f'<span class="run-chip">{rid}: <strong>{rst["accuracy"]:.1f}%</strong></span>')
+            dis_rate = run_disagreements.get(p, 0.0)
+            runs_breakdown_html = f"""
+            <div class="runs-container">
+                <div class="runs-chips">{' '.join(run_items)}</div>
+                <div class="disagreement-stat"><span data-i18n="runs_disagreement">Cross-run disagreement:</span> <strong>{dis_rate:.2f}%</strong></div>
+            </div>
+            """
+
+        cards_html.append(f"""
+        <div class="summary-card">
+            <div class="summary-card-top">
+                <h3 class="provider-title">{html.escape(p)}</h3>
+                {mode_badge}
+            </div>
+            <div class="score-row">
+                <span class="score-number">{acc:.2f}<span class="score-pct">%</span></span>
+                {status_pill}
+            </div>
+            <div class="progress-bar-bg">
+                <div class="progress-bar-fill" style="width: {acc:.2f}%; background-color: {provider_colors.get(p, '#2563eb')};"></div>
+            </div>
+            <div class="metrics-grid">
+                <div class="metric-item">
+                    <span class="metric-label" data-i18n="pass_rate_metric">Check Pass Rate</span>
+                    <span class="metric-val">{sc.get('passed_checks', 0)} / {sc.get('total_checks', 0)} ({sc.get('passed_checks', 0)/(sc.get('total_checks', 1) or 1)*100:.1f}%)</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label" data-i18n="score_metric">{pts_label}</span>
+                    <span class="metric-val">{pts_earned:.1f} / {sc.get('max_points', 0.0):.1f} pt</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label" data-i18n="fails_metric">Failed Checks</span>
+                    <span class="metric-val failure-count">{len(p_fails)}</span>
+                </div>
+            </div>
+            {runs_breakdown_html}
+        </div>
+        """)
+
+    # 4. Truncation Warning Banners
+    truncation_banners_html = ""
+    if truncation_warnings:
+        banner_items = []
+        for p, w_info in truncation_warnings.items():
+            first_m = w_info.get('first_missing', '')
+            cnt = w_info.get('missing_count', 0)
+            msg = w_info.get('message', '')
+            banner_items.append(f"""
+            <div class="truncation-item">
+                <div class="truncation-header">
+                    <span class="trunc-badge">⚠️ Output Truncated</span>
+                    <strong>{html.escape(p)}</strong>: Output truncated starting at prompt <strong>{first_m}</strong> ({msg})
+                </div>
+                <p class="truncation-desc">
+                    Due to provider output token constraints (<code>max_tokens</code>), output stopped at question <strong>{first_m}</strong>.
+                    The remaining {cnt} questions were scored as 0. Please raise Max Output Tokens to <strong>4,096 ~ 8,192</strong>.
+                </p>
+            </div>
+            """)
+        truncation_banners_html = f"""
+        <div class="truncation-box">
+            <div class="truncation-icon">⚠️</div>
+            <div class="truncation-body">
+                <h3 data-i18n="truncation_title">Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)</h3>
+                {' '.join(banner_items)}
+            </div>
+        </div>
+        """
+
+    # 5. 2-Depth Hierarchical Failure Accordion
+    failures_by_provider = {}
+    for p in providers:
+        p_fails = [f for f in failures if f.get("provider") == p]
+        by_prompt = {}
+        for f in p_fails:
+            pid = f.get("prompt_id", "UNKNOWN")
+            if pid not in by_prompt:
+                by_prompt[pid] = []
+            by_prompt[pid].append(f)
+        failures_by_provider[p] = by_prompt
+
+    if not providers:
+        failures_accordion_html = """
+        <div class="card empty-card" style="text-align: center; padding: 36px 20px;">
+            <h3 style="font-size: 18px; margin-bottom: 8px; color: var(--text-secondary);" data-i18n="empty_title" data-ko="평가 대상 응답 파일 없음">⚠️ No Evaluation Responses Found</h3>
+            <p style="color: var(--text-muted); font-size: 13px;" data-i18n="empty_desc">No provider responses were found in the responses directory.</p>
+        </div>
+        """
+    elif not failures:
+        failures_accordion_html = """
+        <div class="card all-pass-card">
+            <h3 data-i18n="all_pass_title" data-ko="전수 체크 100% 통과">🎉 All Checks Passed (Zero Failures)</h3>
+            <p data-i18n="all_pass_desc">Every single evaluation prompt and deterministic check passed with 100% perfection.</p>
+        </div>
+        """
+    else:
+        provider_accordion_items = []
+        for p in providers:
+            p_acc = provider_scores.get(p, {}).get("accuracy", 0.0)
+            p_fails_dict = failures_by_provider.get(p, {})
+            p_fail_count = sum(len(chk_list) for chk_list in p_fails_dict.values())
+            
+            if p_fail_count == 0:
+                provider_accordion_items.append(f"""
+                <div class="provider-clean-card">
+                    <span class="clean-icon">🎉</span>
+                    <strong>{html.escape(p)}</strong> &mdash; <span data-i18n="zero_failures_label">Zero Failures (100% Pass)</span>
+                </div>
+                """)
+            else:
+                prompt_groups_html = []
+                for pid in sorted(p_fails_dict.keys()):
+                    chk_failures = p_fails_dict[pid]
+                    p_cat = chk_failures[0].get("category", "")
+                    cat_en = format_category_name(p_cat, "en")
+                    cat_ko = format_category_name(p_cat, "ko")
+                    
+                    check_items_html = []
+                    for f in chk_failures:
+                        check_items_html.append(f"""
+                        <div class="check-fail-item">
+                            <div class="check-fail-header">
+                                <span class="check-id-badge">{f['check_id']}</span>
+                                <span class="check-type-tag">Type: <code>{f['check_type']}</code></span>
+                                <span class="check-run-tag">Run: <code>{f['run']}</code></span>
+                            </div>
+                            <div class="fail-grid">
+                                <div class="fail-col">
+                                    <span class="fail-field-label" data-i18n="expected_label">Expected:</span>
+                                    <pre class="code-box expected-box"><code>{html.escape(str(f['expected']))}</code></pre>
+                                </div>
+                                <div class="fail-col">
+                                    <span class="fail-field-label" data-i18n="actual_label">Actual Model Output:</span>
+                                    <pre class="code-box actual-box"><code>{html.escape(str(f['actual']))}</code></pre>
+                                </div>
+                            </div>
+                            <div class="fail-reason">
+                                <strong data-i18n="reason_label">Failure Reason:</strong> {html.escape(f['reason'])}
+                            </div>
+                        </div>
+                        """)
+
+                    prompt_groups_html.append(f"""
+                    <details class="prompt-fail-group">
+                        <summary class="prompt-fail-summary">
+                            <span class="chevron">▶</span>
+                            <span class="prompt-pill">[{pid}]</span>
+                            <strong class="prompt-title" data-en="{cat_en}" data-ko="{cat_ko}">{cat_en}</strong>
+                            <span class="badge badge-warning">{len(chk_failures)} checks failed</span>
+                        </summary>
+                        <div class="prompt-fail-body">
+                            {' '.join(check_items_html)}
+                        </div>
+                    </details>
+                    """)
+
+                provider_accordion_items.append(f"""
+                <details class="provider-fail-card" data-provider="{html.escape(p)}">
+                    <summary class="provider-fail-summary">
+                        <div class="summary-left">
+                            <span class="chevron">▶</span>
+                            <strong class="provider-name">{html.escape(p)}</strong>
+                            <span class="badge badge-fail">{p_fail_count} Failures</span>
+                        </div>
+                        <div class="summary-right">
+                            <span class="badge badge-individual">Accuracy: {p_acc:.2f}%</span>
+                        </div>
+                    </summary>
+                    <div class="provider-fail-body">
+                        {' '.join(prompt_groups_html)}
+                    </div>
+                </details>
+                """)
+
+        failures_accordion_html = f"""
+        <div class="card failure-card">
+            <div class="card-header">
+                <div>
+                    <h3 data-i18n="failures_title">🔍 Failure Diagnostics & Detailed Breakdown (2-Depth Hierarchy)</h3>
+                    <span class="badge badge-fail" data-i18n="failures_badge">Total {len(failures)} Failed Checks</span>
+                </div>
+                <div class="accordion-controls">
+                    <button type="button" class="action-btn" onclick="toggleAllAccordions(true)" data-i18n="expand_all">⊞ Expand All</button>
+                    <button type="button" class="action-btn" onclick="toggleAllAccordions(false)" data-i18n="collapse_all">⊟ Collapse All</button>
+                </div>
+            </div>
+            <div class="provider-accordion-list">
+                {' '.join(provider_accordion_items)}
+            </div>
+        </div>
+        """
+
+    # 6. Multi-Run Section (Table)
+    multi_run_section = ""
+    has_multiruns = is_runs_mode or any(len(runs) > 1 for runs in provider_runs.values())
+    if has_multiruns and provider_runs:
+        run_table_rows = []
+        for p, runs_dict in sorted(provider_runs.items()):
+            acc_list = []
+            for rid, rstats in sorted(runs_dict.items()):
+                run_table_rows.append(f"""
+                <tr>
+                    <td><strong>{html.escape(p)}</strong></td>
+                    <td><span class="run-tag">{rid}</span></td>
+                    <td>{rstats['total_points']:.1f} / {rstats['max_points']:.1f} pt</td>
+                    <td><strong>{rstats['accuracy']:.2f}%</strong></td>
+                    <td>{rstats['passed_checks']} / {rstats['total_checks']}</td>
+                </tr>
+                """)
+                acc_list.append(rstats['accuracy'])
+            avg_acc = sum(acc_list) / len(acc_list) if acc_list else 0.0
+            dis_r = run_disagreements.get(p, 0.0)
+            run_table_rows.append(f"""
+            <tr class="row-avg">
+                <td><strong>{html.escape(p)}</strong></td>
+                <td><strong data-i18n="avg_row_label">Run Average</strong></td>
+                <td>-</td>
+                <td><strong class="color-accent">{avg_acc:.2f}%</strong></td>
+                <td>Disagreement: <strong>{dis_r:.2f}%</strong></td>
+            </tr>
+            """)
+
+        multi_run_section = f"""
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 data-i18n="multi_run_table_title">🔁 Multi-Run Breakdown & Run Average</h3>
+                    <span class="badge badge-accent">Variance & Reliability Check</span>
+                </div>
+            </div>
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        <th data-i18n="model_col">Provider</th>
+                        <th>Run</th>
+                        <th data-i18n="pts_col">Score</th>
+                        <th data-i18n="acc_col">Accuracy (%)</th>
+                        <th>Passed Checks / Notes</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {' '.join(run_table_rows)}
+                </tbody>
+            </table>
+        </div>
+        """
+
+    # 7. Category Failure Distribution Stacked Bar Chart
+    svg_fail_chart_section = ""
+    if failures and providers:
+        CAT_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#14b8a6", "#3b82f6", "#a855f7", "#64748b"]
+        cat_color_map = {c: CAT_COLORS[i % len(CAT_COLORS)] for i, c in enumerate(categories)}
+        fail_by_pc = {p: {c: 0 for c in categories} for p in providers}
+        for f in failures:
+            f_p, f_c = f.get("provider"), f.get("category")
+            if f_p in fail_by_pc and f_c in fail_by_pc[f_p]:
+                fail_by_pc[f_p][f_c] += 1
+        max_total_fails = max((sum(fail_by_pc[p].values()) for p in providers), default=0)
+        fail_y_max = float(max(5, math.ceil(max_total_fails / 5.0) * 5))
+        fail_plot_h = 285.0
+        fail_step = fail_y_max / 5.0
+        fail_grid = []
+        for i in range(6):
+            t = fail_step * i
+            y_pos = y_0 - (t / fail_y_max) * fail_plot_h
+            fail_grid.append(
+                f'<line x1="{margin_left}" y1="{y_pos:.1f}" x2="940" y2="{y_pos:.1f}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />'
+            )
+            fail_grid.append(
+                f'<text x="{margin_left - 10}" y="{y_pos + 4:.1f}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">{t:.0f}</text>'
+            )
+        fail_slot_w = plot_w / float(len(providers))
+        fail_bars = []
+        fail_labels = []
+        for p_i, p in enumerate(providers):
+            slot_x = margin_left + p_i * fail_slot_w
+            cx = slot_x + fail_slot_w / 2.0
+            f_bar_w = min(90.0, fail_slot_w - 70.0)
+            bx = cx - f_bar_w / 2.0
+            stack_y = y_0
+            for cat in categories:
+                cnt = fail_by_pc[p][cat]
+                if cnt <= 0:
+                    continue
+                seg_h = (cnt / fail_y_max) * fail_plot_h
+                stack_y -= seg_h
+                fail_bars.append(
+                    f'<rect x="{bx:.1f}" y="{stack_y:.1f}" width="{f_bar_w:.1f}" height="{seg_h:.1f}" fill="{cat_color_map[cat]}">'
+                    f'<title>{html.escape(p)} · {cat}: {cnt} failures</title></rect>'
+                )
+                if seg_h >= 16.0:
+                    fail_bars.append(
+                        f'<text x="{cx:.1f}" y="{stack_y + seg_h/2.0 + 4:.1f}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">{cnt}</text>'
+                    )
+            total_f = sum(fail_by_pc[p].values())
+            fail_labels.append(
+                f'<text x="{cx:.1f}" y="{max(15.0, stack_y - 8.0):.1f}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{total_f}</text>'
+            )
+            p_short = p if len(p) <= 20 else p[:18] + "…"
+            fail_labels.append(
+                f'<text x="{cx:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{html.escape(p_short)}</text>'
+            )
+
+        fail_legend_items = []
+        for cat in categories:
+            c_code = cat.split("_")[0]
+            c_name = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+            fail_legend_items.append(
+                f'<div class="legend-item"><span class="legend-color-dot" style="background-color: {cat_color_map[cat]};"></span>'
+                f'<span class="legend-text">{c_code} {html.escape(c_name)}</span></div>'
+            )
+        fail_chart_legend = f'<div class="chart-legend">{" ".join(fail_legend_items)}</div>'
+
+        svg_fail_chart_section = f"""
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3 data-i18n="fail_dist_title">📉 Failure Count Distribution by Category</h3>
+                    <span class="badge badge-fail" data-i18n="fail_dist_badge">Cumulative Failed Checks: {len(failures)}</span>
+                </div>
+                {fail_chart_legend}
+            </div>
+            <svg viewBox="0 0 960 420" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                <g class="grid-lines">{' '.join(fail_grid)}</g>
+                <g class="bars">{' '.join(fail_bars)}</g>
+                <g class="labels">{' '.join(fail_labels)}</g>
+            </svg>
+        </div>
+        """
+
+    # 8. Pairwise Divergence Reference (Collapsible, preserving all pairs)
+    pairwise_reference_html = ""
     if len(providers) >= 2 and pairwise_diff:
+        pair_cards = []
         for pair_key, diff_info in pairwise_diff.items():
             cat_diffs = diff_info.get("category_diffs", {})
             max_d = 5.0
@@ -1094,7 +1597,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             for c_i, cat in enumerate(categories):
                 cdiff = cat_diffs.get(cat, 0.0)
                 c_code = cat.split("_")[0]
-                c_name = cat.split("_")[1] if "_" in cat else cat
+                c_name = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
                 row_y = 48.0 + c_i * 34.0
                 p_bars.append(
                     f'<text x="{p_center - p_avail - 15}" y="{row_y + 14}" text-anchor="end" font-size="11" font-weight="600" fill="currentColor">{c_code} {c_name}</text>'
@@ -1119,11 +1622,11 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                         f'<text x="{bx - 6:.1f}" y="{row_y + 15}" text-anchor="end" font-size="11" font-weight="700" fill="#ef4444">{cdiff:.1f}%p</text>'
                     )
 
-            pairwise_charts_html.append(f"""
-            <div class="card">
-                <div class="card-header">
-                    <h3>⚖️ 프로바이더 간 편차 분석 (%p Divergence Chart)</h3>
-                    <span class="badge badge-accent"><strong>{html.escape(pair_key)}</strong>: 전체 편차 <strong>{diff_info.get('overall_diff_pp', 0.0):+.2f}%p</strong></span>
+            pair_cards.append(f"""
+            <div style="margin-bottom: 24px; border-bottom: 1px dashed var(--card-border); padding-bottom: 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                    <strong>{html.escape(pair_key)}</strong>
+                    <span class="badge badge-accent">Overall Delta: <strong>{diff_info.get('overall_diff_pp', 0.0):+.2f}%p</strong></span>
                 </div>
                 <svg viewBox="0 0 960 360" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
                     <g class="diff-grid">{' '.join(p_grid)}</g>
@@ -1131,314 +1634,45 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                 </svg>
             </div>
             """)
-    svg_pairwise_chart = "\n".join(pairwise_charts_html)
 
-    # 3. Provider Summary Cards
-    cards_html = []
-    if not providers:
-        cards_html.append("""
-        <div class="card empty-card" style="text-align: center; padding: 40px 20px; grid-column: 1 / -1;">
-            <h3 style="font-size: 20px; margin-bottom: 10px; color: var(--warning);">⚠️ 평가 대상 응답 파일 없음 (No Responses Found)</h3>
-            <p style="color: var(--text-secondary); max-width: 600px; margin: 0 auto 16px;">
-                <code>responses/{provider}/MEGA.md</code> 또는 <code>responses/{provider}/T01.md</code> 파일이 발견되지 않았습니다.
-            </p>
-            <p style="font-size: 13px; color: var(--text-muted);">
-                <code>flip-test-pack/responses/sample_fp8/</code> 또는 <code>sample_fp4/</code> 디렉토리를 참조하여 응답 파일을 배치한 후 다시 실행하십시오.
-            </p>
-        </div>
-        """)
-    for p in providers:
-        sc = provider_scores.get(p, {})
-        acc = sc.get("accuracy", 0.0)
-        mode = provider_modes.get(p, "individual")
-        mode_badge = '<span class="badge badge-mega">⚡ 메가 배치 (Mega-Batch)</span>' if mode == "mega" else '<span class="badge badge-individual">📄 개별 파일 (Individual)</span>'
-        
-        status_pill = '<span class="status-pill status-perfect">🏆 무손실 (100%)</span>' if acc >= 99.9 else (
-            '<span class="status-pill status-high">⚡ 고품질 (High)</span>' if acc >= 95.0 else (
-                '<span class="status-pill status-warning">⚠️ 미세 손실 (Minor Loss)</span>' if acc >= 90.0 else
-                '<span class="status-pill status-danger">❌ 열화 (Degraded)</span>'
-            )
-        )
-
-        p_fails = [f for f in failures if f["provider"] == p]
-
-        if is_runs_mode:
-            pts_label = "평균 획득 점수 (회차 평균)"
-            pts_earned = sc.get("avg_points", sc.get("total_points", 0.0))
-        else:
-            pts_label = "총 획득 점수"
-            pts_earned = sc.get("total_points", 0.0)
-
-        runs_breakdown_html = ""
-        p_runs = provider_runs.get(p, {})
-        if len(p_runs) > 1 or is_runs_mode:
-            run_items = []
-            for rid, rst in sorted(p_runs.items()):
-                run_items.append(f'<span class="run-chip">{rid}: <strong>{rst["accuracy"]:.1f}%</strong></span>')
-            dis_rate = run_disagreements.get(p, 0.0)
-            runs_breakdown_html = f"""
-            <div class="runs-container">
-                <div class="runs-chips">{' '.join(run_items)}</div>
-                <div class="disagreement-stat">회차 간 불일치율: <strong>{dis_rate:.2f}%</strong></div>
-            </div>
-            """
-
-        cards_html.append(f"""
-        <div class="summary-card">
-            <div class="summary-card-top">
-                <h3 class="provider-title">{html.escape(p)}</h3>
-                {mode_badge}
-            </div>
-            <div class="score-row">
-                <span class="score-number">{acc:.2f}<span class="score-pct">%</span></span>
-                {status_pill}
-            </div>
-            <div class="progress-bar-bg">
-                <div class="progress-bar-fill" style="width: {acc:.2f}%; background-color: {provider_colors.get(p, '#2563eb')};"></div>
-            </div>
-            <div class="metrics-grid">
-                <div class="metric-item">
-                    <span class="metric-label">체크 통과율</span>
-                    <span class="metric-val">{sc.get('passed_checks', 0)} / {sc.get('total_checks', 0)} ({sc.get('passed_checks', 0)/(sc.get('total_checks', 1) or 1)*100:.1f}%)</span>
+        pairwise_reference_html = f"""
+        <details class="card pairwise-details">
+            <summary class="card-header" style="cursor: pointer; user-select: none;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <span class="chevron">▶</span>
+                    <h3 data-i18n="pairwise_title">⚖️ Pairwise Divergence Reference (%p)</h3>
                 </div>
-                <div class="metric-item">
-                    <span class="metric-label">{pts_label}</span>
-                    <span class="metric-val">{pts_earned:.1f} / {sc.get('max_points', 0.0):.1f} pt</span>
-                </div>
-                <div class="metric-item">
-                    <span class="metric-label">실패 체크 건수</span>
-                    <span class="metric-val failure-count">{len(p_fails)}건</span>
-                </div>
+                <span class="badge badge-accent">{len(pairwise_diff)} Pairs Available</span>
+            </summary>
+            <div style="padding-top: 16px;">
+                {' '.join(pair_cards)}
             </div>
-            {runs_breakdown_html}
-        </div>
-        """)
-
-    # 4. Truncation Warning Banners
-    truncation_banners_html = ""
-    if truncation_warnings:
-        banner_items = []
-        for p, w_info in truncation_warnings.items():
-            banner_items.append(f"""
-            <div class="truncation-item">
-                <div class="truncation-header">
-                    <span class="trunc-badge">⚠️ 토큰 한도 절단 (Truncation)</span>
-                    <strong>{html.escape(p)}</strong>: {html.escape(w_info['message'])}
-                </div>
-                <p class="truncation-desc">
-                    API 프로바이더의 <code>max_tokens</code> 출력 제한으로 인해 <strong>{w_info['first_missing']}</strong> 문항부터 출력이 중단되었습니다.
-                    누락된 {w_info['missing_count']}개 문항은 모두 0점으로 처리되었습니다. API 호출 시 Max Output Tokens 설정을 <strong>4,096 ~ 8,192</strong>로 상향하십시오.
-                </p>
-            </div>
-            """)
-        truncation_banners_html = f"""
-        <div class="truncation-box">
-            <div class="truncation-icon">⚠️</div>
-            <div class="truncation-body">
-                <h3>토큰 절단(Token Truncation) 감지 경고</h3>
-                {' '.join(banner_items)}
-            </div>
-        </div>
+        </details>
         """
 
-    # 5. Failed Items Accordion
-    failures_html = ""
-    if failures:
-        fail_items_html = []
-        for idx, f in enumerate(failures):
-            fail_items_html.append(f"""
-            <details class="fail-accordion-item" {'open' if idx < 3 else ''}>
-                <summary>
-                    <span class="badge badge-fail">실패</span>
-                    <span class="fail-prompt-id">[{f['prompt_id']}]</span>
-                    <strong>{f['check_id']}</strong> ({f['category']}) &mdash; <em>{html.escape(f['provider'])} ({f['run']})</em>
-                </summary>
-                <div class="fail-content">
-                    <div class="fail-grid">
-                        <div class="fail-col">
-                            <span class="fail-field-label">기대값 (Expected) [유형: <code>{f['check_type']}</code>]:</span>
-                            <pre class="code-box expected-box"><code>{html.escape(str(f['expected']))}</code></pre>
-                        </div>
-                        <div class="fail-col">
-                            <span class="fail-field-label">실제 출력값 (Actual):</span>
-                            <pre class="code-box actual-box"><code>{html.escape(str(f['actual']))}</code></pre>
-                        </div>
-                    </div>
-                    <div class="fail-reason">
-                        <strong>판정 사유:</strong> {html.escape(f['reason'])}
-                    </div>
-                </div>
-            </details>
-            """)
-        failures_html = f"""
-        <div class="card">
-            <div class="card-header">
-                <h3>🔍 실패 체크 상세 내역 (Failure Breakdown)</h3>
-                <span class="badge badge-fail">총 {len(failures)}건 실패</span>
-            </div>
-            <div class="fail-list">
-                {' '.join(fail_items_html)}
-            </div>
-        </div>
-        """
-    elif not providers:
-        failures_html = """
-        <div class="card empty-card" style="text-align: center; padding: 32px 20px;">
-            <h3 style="font-size: 18px; margin-bottom: 8px; color: var(--text-secondary);">평가 결과 없음 (No Results)</h3>
-            <p style="color: var(--text-muted); font-size: 13px;">채점할 프로바이더 응답이 없어 검증 체크가 수행되지 않았습니다.</p>
-        </div>
-        """
-    else:
-        failures_html = """
-        <div class="card all-pass-card">
-            <h3>🎉 전수 체크 100% 통과 (Zero Failures)</h3>
-            <p>모든 평가 문항과 결정적 체크 항목을 100% 무결점으로 통과하였습니다.</p>
-        </div>
-        """
+    # Serialize benchmark data for client-side comparison & i18n
+    benchmark_payload = {
+        "providers": providers,
+        "categories": categories,
+        "is_runs_mode": is_runs_mode,
+        "provider_scores": provider_scores,
+        "provider_runs": provider_runs,
+        "provider_modes": provider_modes,
+        "provider_colors": provider_colors,
+        "pairwise_diff": pairwise_diff,
+        "run_disagreements": run_disagreements,
+        "truncation_warnings": truncation_warnings,
+        "category_names": CATEGORY_TRANSLATIONS,
+    }
+    benchmark_json = json.dumps(benchmark_payload, ensure_ascii=False).replace("</", "<\\/")
 
-    # Multi-Run Section
-    multi_run_section = ""
-    has_multiruns = is_runs_mode or any(len(runs) > 1 for runs in provider_runs.values())
-    if has_multiruns and provider_runs:
-        run_table_rows = []
-        for p, runs_dict in sorted(provider_runs.items()):
-            acc_list = []
-            for rid, rstats in sorted(runs_dict.items()):
-                run_table_rows.append(f"""
-                <tr>
-                    <td><strong>{html.escape(p)}</strong></td>
-                    <td><span class="run-tag">{rid}</span></td>
-                    <td>{rstats['total_points']:.1f} / {rstats['max_points']:.1f} pt</td>
-                    <td><strong>{rstats['accuracy']:.2f}%</strong></td>
-                    <td>{rstats['passed_checks']} / {rstats['total_checks']}</td>
-                </tr>
-                """)
-                acc_list.append(rstats['accuracy'])
-            avg_acc = sum(acc_list) / len(acc_list) if acc_list else 0.0
-            dis_r = run_disagreements.get(p, 0.0)
-            run_table_rows.append(f"""
-            <tr class="row-avg">
-                <td><strong>{html.escape(p)}</strong></td>
-                <td><strong>회차 평균 (Average)</strong></td>
-                <td>-</td>
-                <td><strong class="color-accent">{avg_acc:.2f}%</strong></td>
-                <td>불일치율: <strong>{dis_r:.2f}%</strong></td>
-            </tr>
-            """)
-
-        multi_run_section = f"""
-        <div class="card">
-            <div class="card-header">
-                <h3>🔁 다회차 실행 결과 및 회차 평균 (Multi-Run Analysis)</h3>
-                <span class="badge badge-accent">반복 실행 분산 검증</span>
-            </div>
-            <table class="report-table">
-                <thead>
-                    <tr>
-                        <th>프로바이더</th>
-                        <th>회차 (Run)</th>
-                        <th>획득 점수</th>
-                        <th>정확도 (%)</th>
-                        <th>체크 통과수 / 비고</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {' '.join(run_table_rows)}
-                </tbody>
-            </table>
-        </div>
-        """
-
-    # 6. Failure Count by Category Chart SVG (stacked per provider)
-    svg_fail_chart_section = ""
-    if failures and providers:
-        CAT_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#14b8a6", "#3b82f6", "#a855f7", "#64748b"]
-        cat_color_map = {c: CAT_COLORS[i % len(CAT_COLORS)] for i, c in enumerate(categories)}
-        fail_by_pc = {p: {c: 0 for c in categories} for p in providers}
-        for f in failures:
-            f_p, f_c = f.get("provider"), f.get("category")
-            if f_p in fail_by_pc and f_c in fail_by_pc[f_p]:
-                fail_by_pc[f_p][f_c] += 1
-        max_total_fails = max((sum(fail_by_pc[p].values()) for p in providers), default=0)
-        fail_y_max = float(max(5, math.ceil(max_total_fails / 5.0) * 5))
-        fail_plot_h = 285.0
-        fail_step = fail_y_max / 5.0
-        fail_grid = []
-        for i in range(6):
-            t = fail_step * i
-            y_pos = y_0 - (t / fail_y_max) * fail_plot_h
-            fail_grid.append(
-                f'<line x1="{margin_left}" y1="{y_pos:.1f}" x2="940" y2="{y_pos:.1f}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />'
-            )
-            fail_grid.append(
-                f'<text x="{margin_left - 10}" y="{y_pos + 4:.1f}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">{t:.0f}건</text>'
-            )
-        fail_slot_w = plot_w / float(len(providers))
-        fail_bars = []
-        fail_labels = []
-        for p_i, p in enumerate(providers):
-            slot_x = margin_left + p_i * fail_slot_w
-            cx = slot_x + fail_slot_w / 2.0
-            f_bar_w = min(90.0, fail_slot_w - 70.0)
-            bx = cx - f_bar_w / 2.0
-            stack_y = y_0
-            for cat in categories:
-                cnt = fail_by_pc[p][cat]
-                if cnt <= 0:
-                    continue
-                seg_h = (cnt / fail_y_max) * fail_plot_h
-                stack_y -= seg_h
-                fail_bars.append(
-                    f'<rect x="{bx:.1f}" y="{stack_y:.1f}" width="{f_bar_w:.1f}" height="{seg_h:.1f}" fill="{cat_color_map[cat]}">'
-                    f'<title>{html.escape(p)} · {cat}: {cnt}건</title></rect>'
-                )
-                if seg_h >= 16.0:
-                    fail_bars.append(
-                        f'<text x="{cx:.1f}" y="{stack_y + seg_h/2.0 + 4:.1f}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">{cnt}</text>'
-                    )
-            total_f = sum(fail_by_pc[p].values())
-            fail_labels.append(
-                f'<text x="{cx:.1f}" y="{max(15.0, stack_y - 8.0):.1f}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{total_f}건</text>'
-            )
-            p_short = p if len(p) <= 20 else p[:18] + "…"
-            fail_labels.append(
-                f'<text x="{cx:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{html.escape(p_short)}</text>'
-            )
-
-        fail_legend_items = []
-        for cat in categories:
-            c_code = cat.split("_")[0]
-            c_name = cat.split("_")[1] if "_" in cat else cat
-            fail_legend_items.append(
-                f'<div class="legend-item"><span class="legend-color-dot" style="background-color: {cat_color_map[cat]};"></span>'
-                f'<span class="legend-text">{c_code} {html.escape(c_name)}</span></div>'
-            )
-        fail_chart_legend = f'<div class="chart-legend">{" ".join(fail_legend_items)}</div>'
-
-        svg_fail_chart_section = f"""
-        <div class="card">
-            <div class="card-header">
-                <div>
-                    <h3>📉 실패 건수 카테고리 분포 (Failure Count by Category)</h3>
-                    <span class="badge badge-fail">누적 실패 체크 {len(failures)}건</span>
-                </div>
-                {fail_chart_legend}
-            </div>
-            <svg viewBox="0 0 960 420" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
-                <g class="grid-lines">{' '.join(fail_grid)}</g>
-                <g class="bars">{' '.join(fail_bars)}</g>
-                <g class="labels">{' '.join(fail_labels)}</g>
-            </svg>
-        </div>
-        """
-
-    # Assemble HTML
+    # Assemble HTML document
     html_doc = f"""<!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드</title>
+    <title data-i18n="title" data-ko="Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드">Zoo Code Custom Mode — CJK-Flip Evaluation Dashboard</title>
     <style>
         :root {{
             --bg-color: #f8fafc;
@@ -1489,6 +1723,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             padding-bottom: 16px;
             border-bottom: 1px solid var(--card-border);
             gap: 16px;
+            flex-wrap: wrap;
         }}
         .title-group h1 {{
             font-size: 24px;
@@ -1503,6 +1738,30 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             display: flex;
             gap: 10px;
             align-items: center;
+        }}
+        .lang-switch {{
+            display: inline-flex;
+            background: var(--code-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 2px;
+            gap: 2px;
+        }}
+        .lang-btn {{
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 12px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .lang-btn.active {{
+            background: var(--accent);
+            color: #ffffff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }}
         .theme-btn {{
             background: var(--card-bg);
@@ -1647,6 +1906,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         .badge-individual {{ background: var(--code-bg); color: var(--text-secondary); }}
         .badge-accent {{ background: var(--accent-light); color: var(--accent); }}
         .badge-fail {{ background: rgba(239, 68, 68, 0.15); color: #ef4444; }}
+        .badge-warning {{ background: rgba(245, 158, 11, 0.15); color: #f59e0b; }}
         .chart-legend {{
             display: flex;
             gap: 14px;
@@ -1692,6 +1952,311 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             max-height: 480px;
             display: block;
         }}
+
+        /* 5-Slot Comparison UI */
+        .slots-bar {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+            background: var(--code-bg);
+            padding: 16px;
+            border-radius: 10px;
+            border: 1px solid var(--card-border);
+        }}
+        .slot-box {{
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--card-bg);
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--card-border);
+            border-top: 3px solid #2563eb;
+        }}
+        .slot-num {{
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }}
+        .slot-select {{
+            width: 100%;
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid var(--card-border);
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+        }}
+        .comp-empty-notice {{
+            text-align: center;
+            padding: 36px 16px;
+            color: var(--text-muted);
+            background: var(--code-bg);
+            border-radius: 8px;
+            border: 1px dashed var(--card-border);
+        }}
+        .comp-subcard {{
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }}
+        .highlights-grid {{
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+            gap: 12px;
+        }}
+        .highlight-card {{
+            background: var(--code-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }}
+        .highlight-head {{
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 6px;
+        }}
+        .highlight-code {{
+            background: var(--accent);
+            color: white;
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }}
+        .highlight-name {{
+            font-size: 12px;
+            flex: 1;
+        }}
+        .highlight-spread {{
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--warning);
+        }}
+        .highlight-row {{
+            display: flex;
+            font-size: 12px;
+            gap: 6px;
+            align-items: flex-start;
+        }}
+        .highlight-label {{
+            color: var(--text-muted);
+            min-width: 65px;
+            font-size: 11px;
+        }}
+        .highlight-pill {{
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: 600;
+            display: inline-block;
+        }}
+        .best-pill {{
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }}
+        .worst-pill {{
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+        }}
+        .tied-pill {{
+            background: rgba(100, 116, 139, 0.15);
+            color: var(--text-muted);
+        }}
+
+        /* 2-Depth Failure Accordion */
+        .accordion-controls {{
+            display: flex;
+            gap: 8px;
+        }}
+        .action-btn {{
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        .action-btn:hover {{
+            background: var(--accent-light);
+            border-color: var(--accent);
+        }}
+        .provider-fail-card {{
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            background: var(--card-bg);
+        }}
+        .provider-fail-summary {{
+            padding: 14px 18px;
+            cursor: pointer;
+            background: var(--code-bg);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            user-select: none;
+            font-size: 15px;
+        }}
+        .provider-fail-summary:hover {{
+            opacity: 0.95;
+        }}
+        .summary-left, .summary-right {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }}
+        .chevron {{
+            display: inline-block;
+            transition: transform 0.2s;
+            font-size: 12px;
+            color: var(--text-muted);
+        }}
+        details[open] > summary > .summary-left > .chevron,
+        details[open] > summary > .chevron {{
+            transform: rotate(90deg);
+        }}
+        .provider-fail-body {{
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .prompt-fail-group {{
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            overflow: hidden;
+            background: var(--card-bg);
+        }}
+        .prompt-fail-summary {{
+            padding: 10px 14px;
+            cursor: pointer;
+            background: var(--code-bg);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            user-select: none;
+        }}
+        .prompt-pill {{
+            font-family: monospace;
+            font-weight: 700;
+        }}
+        .prompt-title {{
+            flex: 1;
+        }}
+        .prompt-fail-body {{
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }}
+        .check-fail-item {{
+            border: 1px solid var(--card-border);
+            border-radius: 6px;
+            padding: 12px;
+            background: var(--code-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }}
+        .check-fail-header {{
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            font-size: 12px;
+        }}
+        .check-id-badge {{
+            background: var(--accent);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-family: monospace;
+        }}
+        .check-type-tag, .check-run-tag {{
+            color: var(--text-secondary);
+        }}
+        .fail-grid {{
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }}
+        @media (max-width: 768px) {{
+            .fail-grid {{ grid-template-columns: 1fr; }}
+            .header {{ flex-direction: column; align-items: stretch; }}
+        }}
+        .fail-col {{
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }}
+        .fail-field-label {{
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }}
+        .code-box {{
+            background: var(--card-bg);
+            padding: 10px;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            word-break: break-all;
+            max-height: 140px;
+            overflow-y: auto;
+            border: 1px solid var(--card-border);
+        }}
+        .actual-box {{
+            border-color: rgba(239, 68, 68, 0.4);
+            background: rgba(239, 68, 68, 0.04);
+        }}
+        .fail-reason {{
+            font-size: 13px;
+            padding: 8px 12px;
+            background: var(--card-bg);
+            border-left: 3px solid var(--danger);
+            border-radius: 4px;
+        }}
+        .provider-clean-card {{
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 14px 18px;
+            margin-bottom: 12px;
+            background: rgba(16, 185, 129, 0.05);
+            color: var(--success);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }}
+        .all-pass-card {{
+            text-align: center;
+            padding: 36px 20px;
+            color: var(--success);
+        }}
+        .all-pass-card h3 {{
+            font-size: 20px;
+            margin-bottom: 8px;
+        }}
+
+        /* Truncation Banners */
         .truncation-box {{
             background: linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(245, 158, 11, 0.08));
             border: 2px solid var(--warning);
@@ -1728,6 +2293,8 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             margin-top: 4px;
             color: var(--text-secondary);
         }}
+
+        /* Tables & Footer */
         .report-table {{
             width: 100%;
             border-collapse: collapse;
@@ -1756,87 +2323,6 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             border-radius: 4px;
             font-family: monospace;
         }}
-        .fail-accordion-item {{
-            border: 1px solid var(--card-border);
-            border-radius: 8px;
-            margin-bottom: 10px;
-            overflow: hidden;
-            background: var(--card-bg);
-        }}
-        .fail-accordion-item summary {{
-            padding: 12px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            background: var(--code-bg);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            user-select: none;
-        }}
-        .fail-accordion-item summary:hover {{
-            opacity: 0.9;
-        }}
-        .fail-prompt-id {{
-            font-weight: 700;
-            font-family: monospace;
-        }}
-        .fail-content {{
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }}
-        .fail-grid {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 14px;
-        }}
-        @media (max-width: 768px) {{
-            .fail-grid {{ grid-template-columns: 1fr; }}
-            .header {{ flex-direction: column; align-items: stretch; }}
-        }}
-        .fail-col {{
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }}
-        .fail-field-label {{
-            font-size: 12px;
-            font-weight: 600;
-            color: var(--text-muted);
-        }}
-        .code-box {{
-            background: var(--code-bg);
-            padding: 10px;
-            border-radius: 6px;
-            font-family: Consolas, monospace;
-            font-size: 12px;
-            white-space: pre-wrap;
-            word-break: break-all;
-            max-height: 140px;
-            overflow-y: auto;
-            border: 1px solid var(--card-border);
-        }}
-        .actual-box {{
-            border-color: rgba(239, 68, 68, 0.4);
-            background: rgba(239, 68, 68, 0.04);
-        }}
-        .fail-reason {{
-            font-size: 13px;
-            padding: 8px 12px;
-            background: var(--code-bg);
-            border-left: 3px solid var(--danger);
-            border-radius: 4px;
-        }}
-        .all-pass-card {{
-            text-align: center;
-            padding: 36px 20px;
-            color: var(--success);
-        }}
-        .all-pass-card h3 {{
-            font-size: 20px;
-            margin-bottom: 8px;
-        }}
         .footer {{
             text-align: center;
             font-size: 12px;
@@ -1851,16 +2337,20 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     <div class="container">
         <header class="header">
             <div class="title-group">
-                <h1>Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드</h1>
-                <p class="subtitle">동일 하네스 조건에서의 프로바이더 간 결정적 출력 차이 정밀 분석</p>
+                <h1 data-i18n="title" data-ko="Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드">Zoo Code Custom Mode — CJK-Flip Evaluation Dashboard</h1>
+                <p class="subtitle" data-i18n="subtitle">Deterministic Output Quality & Fine-Grained Divergence Analysis under Identical Harness Conditions</p>
                 <div class="meta-pills">
-                    <span class="pill">평가 문항: 40개</span>
-                    <span class="pill">결정적 체크: 298개</span>
-                    <span class="pill">모드: {'다회차 분석 (--runs)' if is_runs_mode else '단일 회차 (Standard)'}</span>
+                    <span class="pill" data-i18n="prompts_pill">Prompts: 40</span>
+                    <span class="pill" data-i18n="checks_pill">Deterministic Checks: 298</span>
+                    <span class="pill" data-i18n="mode_pill">Mode: {'Multi-Run Analysis (--runs)' if is_runs_mode else 'Single-Run (Standard)'}</span>
                 </div>
             </div>
             <div class="header-actions">
-                <button class="theme-btn" onclick="toggleTheme()">🌓 테마 전환</button>
+                <div class="lang-switch">
+                    <button id="lang-btn-en" type="button" class="lang-btn active" onclick="setLanguage('en')">EN</button>
+                    <button id="lang-btn-ko" type="button" class="lang-btn" onclick="setLanguage('ko')">KO</button>
+                </div>
+                <button type="button" class="theme-btn" onclick="toggleTheme()" data-i18n="theme_btn">🌓 Theme</button>
             </div>
         </header>
 
@@ -1870,11 +2360,48 @@ def generate_html_report(results: dict, output_path: Path) -> str:
             {' '.join(cards_html)}
         </section>
 
+        <!-- 5-Slot Interactive Head-to-Head Comparison Engine -->
+        <section class="card comparison-card" id="comparison-section">
+            <div class="card-header">
+                <div>
+                    <h3 data-i18n="comp_title">⚖️ Multi-Model Comparison (1:1:1:1:1 Selector)</h3>
+                    <span class="badge badge-accent" data-i18n="comp_badge">Select up to 5 models to compare head-to-head</span>
+                </div>
+                <button type="button" class="action-btn" onclick="resetComparisonSlots()" data-i18n="comp_reset">↺ Reset Selection</button>
+            </div>
+            <div class="slots-bar">
+                <div class="slot-box" style="border-top-color: #2563eb;">
+                    <label for="comp-slot-0"><span class="slot-num" data-i18n="slot1">Slot 1</span></label>
+                    <select id="comp-slot-0" class="slot-select" onchange="updateComparison()"></select>
+                </div>
+                <div class="slot-box" style="border-top-color: #10b981;">
+                    <label for="comp-slot-1"><span class="slot-num" data-i18n="slot2">Slot 2</span></label>
+                    <select id="comp-slot-1" class="slot-select" onchange="updateComparison()"></select>
+                </div>
+                <div class="slot-box" style="border-top-color: #d97706;">
+                    <label for="comp-slot-2"><span class="slot-num" data-i18n="slot3">Slot 3</span></label>
+                    <select id="comp-slot-2" class="slot-select" onchange="updateComparison()"></select>
+                </div>
+                <div class="slot-box" style="border-top-color: #8b5cf6;">
+                    <label for="comp-slot-3"><span class="slot-num" data-i18n="slot4">Slot 4</span></label>
+                    <select id="comp-slot-3" class="slot-select" onchange="updateComparison()"></select>
+                </div>
+                <div class="slot-box" style="border-top-color: #ec4899;">
+                    <label for="comp-slot-4"><span class="slot-num" data-i18n="slot5">Slot 5</span></label>
+                    <select id="comp-slot-4" class="slot-select" onchange="updateComparison()"></select>
+                </div>
+            </div>
+            <div id="comp-results-container">
+                <!-- Injected via JavaScript -->
+            </div>
+        </section>
+
+        <!-- Category Accuracy Grouped Bar Chart -->
         <section class="card">
             <div class="card-header">
                 <div>
-                    <h3>📊 카테고리별 정확도 그룹 차트 (Category-Level Accuracy)</h3>
-                    <span class="badge badge-accent">프로바이더별 회차 평균 정확도 (%)</span>
+                    <h3 data-i18n="overall_chart_title" data-ko="카테고리별 정확도 그룹 차트">📊 Category-Level Accuracy Grouped Chart</h3>
+                    <span class="badge badge-accent" data-i18n="overall_chart_badge">Provider Run-Average Accuracy (%)</span>
                 </div>
                 {html_legend}
             </div>
@@ -1883,30 +2410,517 @@ def generate_html_report(results: dict, output_path: Path) -> str:
 
         {svg_run_chart_section}
 
-        {svg_pairwise_chart}
-
         {multi_run_section}
-
-        {failures_html}
 
         {svg_fail_chart_section}
 
+        {failures_accordion_html}
+
+        {pairwise_reference_html}
+
         <footer class="footer">
-            <p><strong>측정 대상 명명</strong>: 본 결과는 '모델 품질'이 아니라 <strong>'동일 하네스 조건에서의 프로바이더 간 출력 차이'</strong>를 나타냅니다.</p>
-            <p>CJK-Flip Test Pack &bull; 100% Deterministic Rule Engine &bull; Zero External Dependency</p>
+            <p><strong data-i18n="target_dec_label">Measurement Target Declaration</strong>: <span data-i18n="target_declaration">These results measure 'output divergence across providers under identical harness conditions', NOT 'general model capability'.</span></p>
+            <p data-i18n="footer_sub">CJK-Flip Test Pack &bull; 100% Deterministic Rule Engine &bull; Zero External Dependency</p>
         </footer>
     </div>
 
+    <!-- Embedded Benchmark Payload for Client-Side Interactivity -->
+    <script id="benchmark-data" type="application/json">{benchmark_json}</script>
+
     <script>
+    const I18N = {{
+        en: {{
+            title: "Zoo Code Custom Mode — CJK-Flip Evaluation Dashboard",
+            subtitle: "Deterministic Output Quality & Fine-Grained Divergence Analysis under Identical Harness Conditions",
+            prompts_pill: "Prompts: 40",
+            checks_pill: "Deterministic Checks: 298",
+            mode_pill: "Mode: {'Multi-Run Analysis (--runs)' if is_runs_mode else 'Single-Run (Standard)'}",
+            theme_btn: "🌓 Theme",
+            comp_title: "⚖️ Multi-Model Comparison (1:1:1:1:1 Selector)",
+            comp_badge: "Select up to 5 models to compare head-to-head",
+            comp_reset: "↺ Reset Selection",
+            slot1: "Slot 1",
+            slot2: "Slot 2",
+            slot3: "Slot 3",
+            slot4: "Slot 4",
+            slot5: "Slot 5",
+            comp_need_two: "Please select at least 2 distinct models in the slots above to compare.",
+            scorecard_title: "📊 Ranked Scorecard & Divergence from 1st Place",
+            rank_col: "Rank",
+            model_col: "Model / Provider",
+            acc_col: "Accuracy",
+            delta_col: "Delta vs 1st",
+            pts_col: "Score",
+            pass_rate_col: "Check Pass Rate",
+            disagreement_col: "Disagreement",
+            comp_chart_title: "📈 8-Category Head-to-Head Comparison Chart (%)",
+            highlights_title: "🎯 Category Strengths & Deficits (Best vs Needs Improvement)",
+            best_label: "Best",
+            needs_imp_label: "Needs Improvement",
+            tied_label: "All Tied",
+            overall_chart_title: "📊 Category-Level Accuracy Grouped Chart",
+            overall_chart_badge: "Provider Run-Average Accuracy (%)",
+            run_chart_title: "📈 Per-Run Accuracy Grouped Chart",
+            run_chart_badge: "r1 / r2 / r3 Shade Bars + Run Average Marker (%)",
+            fail_dist_title: "📉 Failure Count Distribution by Category",
+            fail_dist_badge: "Cumulative Failed Checks: {len(failures)}",
+            failures_title: "🔍 Failure Diagnostics & Detailed Breakdown (2-Depth Hierarchy)",
+            failures_badge: "Total {len(failures)} Failed Checks",
+            expand_all: "⊞ Expand All",
+            collapse_all: "⊟ Collapse All",
+            expected_label: "Expected:",
+            actual_label: "Actual Model Output:",
+            reason_label: "Failure Reason:",
+            zero_failures_label: "Zero Failures (100% Pass)",
+            all_pass_title: "🎉 All Checks Passed (Zero Failures)",
+            all_pass_desc: "Every single evaluation prompt and deterministic check passed with 100% perfection.",
+            empty_title: "⚠️ No Evaluation Responses Found",
+            empty_desc: "No provider responses were found in the responses directory.",
+            target_dec_label: "Measurement Target Declaration",
+            target_declaration: "These results measure 'output divergence across providers under identical harness conditions', NOT 'general model capability'.",
+            footer_sub: "CJK-Flip Test Pack • 100% Deterministic Rule Engine • Zero External Dependency",
+            pass_rate_metric: "Check Pass Rate",
+            score_metric: "{'Average Score (Run Avg)' if is_runs_mode else 'Total Score'}",
+            fails_metric: "Failed Checks",
+            runs_disagreement: "Cross-run disagreement:",
+            truncation_title: "Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)",
+            pairwise_title: "⚖️ Pairwise Divergence Reference (%p)",
+            multi_run_table_title: "🔁 Multi-Run Breakdown & Run Average",
+            avg_row_label: "Run Average",
+            mega_badge: "⚡ Mega-Batch",
+            indiv_badge: "📄 Individual"
+        }},
+        ko: {{
+            title: "Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드",
+            subtitle: "동일 하네스 조건에서의 프로바이더 간 결정적 출력 차이 정밀 분석",
+            prompts_pill: "평가 문항: 40개",
+            checks_pill: "결정적 체크: 298개",
+            mode_pill: "모드: {'다회차 분석 (--runs)' if is_runs_mode else '단일 회차 (Standard)'}",
+            theme_btn: "🌓 테마 전환",
+            comp_title: "⚖️ 최대 5개 모델 동시 비교 (1:1:1:1:1 Selector)",
+            comp_badge: "최대 5개 모델을 선택하여 다각도로 직접 비교 분석",
+            comp_reset: "↺ 슬롯 초기화",
+            slot1: "슬롯 1",
+            slot2: "슬롯 2",
+            slot3: "슬롯 3",
+            slot4: "슬롯 4",
+            slot5: "슬롯 5",
+            comp_need_two: "비교를 위해 상단 슬롯에서 서로 다른 모델을 2개 이상 선택해 주세요.",
+            scorecard_title: "📊 선택 모델 종합 순위 및 1위 대비 스코어카드",
+            rank_col: "순위",
+            model_col: "모델 / 프로바이더",
+            acc_col: "정확도",
+            delta_col: "1위 대비 편차",
+            pts_col: "획득 점수",
+            pass_rate_col: "체크 통과율",
+            disagreement_col: "회차 불일치율",
+            comp_chart_title: "📈 8개 카테고리별 다중 바 차트 (Head-to-Head %)",
+            highlights_title: "🎯 카테고리별 최고 / 최저 득점 모델 하이라이트",
+            best_label: "최고 득점 (Best)",
+            needs_imp_label: "개선 필요 (Needs Imp)",
+            tied_label: "전원 동률",
+            overall_chart_title: "📊 카테고리별 정확도 그룹 차트",
+            overall_chart_badge: "프로바이더별 회차 평균 정확도 (%)",
+            run_chart_title: "📈 회차별 정확도 그룹 차트",
+            run_chart_badge: "r1 / r2 / r3 명도 막대 + 회차 평균 마커 (%)",
+            fail_dist_title: "📉 실패 건수 카테고리 분포 (Failure Distribution)",
+            fail_dist_badge: "누적 실패 체크: {len(failures)}건",
+            failures_title: "🔍 실패 체크 상세 내역 (2단계 계층형 아코디언)",
+            failures_badge: "총 실패 {len(failures)}건",
+            expand_all: "⊞ 모두 펴기",
+            collapse_all: "⊟ 모두 접기",
+            expected_label: "기대값 (Expected):",
+            actual_label: "실제 출력값 (Actual):",
+            reason_label: "판정 사유 (Reason):",
+            zero_failures_label: "전수 체크 100% 무결점 통과 (Zero Failures)",
+            all_pass_title: "{all_pass_ko_title}",
+            all_pass_desc: "모든 평가 문항과 결정적 체크 항목을 100% 무결점으로 통과하였습니다.",
+            empty_title: "⚠️ 평가 대상 응답 파일 없음",
+            empty_desc: "responses/ 디렉토리에 평가할 프로바이더 응답 파일이 발견되지 않았습니다.",
+            target_dec_label: "측정 대상 명명",
+            target_declaration: "본 결과는 '모델 품질'이 아니라 '동일 하네스 조건에서의 프로바이더 간 출력 차이'를 나타냅니다.",
+            footer_sub: "CJK-Flip Test Pack • 100% Deterministic Rule Engine • Zero External Dependency",
+            pass_rate_metric: "체크 통과율",
+            score_metric: "{'평균 획득 점수 (회차 평균)' if is_runs_mode else '총 획득 점수'}",
+            fails_metric: "실패 체크 건수",
+            runs_disagreement: "회차 간 불일치율:",
+            truncation_title: "토큰 절단 진단 경고 (Truncation Warnings)",
+            pairwise_title: "⚖️ 프로바이더 쌍별 편차 분석 (%p)",
+            multi_run_table_title: "🔁 다회차 실행 결과 및 회차 평균",
+            avg_row_label: "회차 평균",
+            mega_badge: "⚡ 메가 배치",
+            indiv_badge: "📄 개별 파일"
+        }}
+    }};
+
+    let BENCHMARK_DATA = {{}};
+    try {{
+        BENCHMARK_DATA = JSON.parse(document.getElementById('benchmark-data').textContent);
+    }} catch(e) {{
+        console.error('Failed to parse benchmark data', e);
+    }}
+
+    const SLOT_COLORS = ["#2563eb", "#10b981", "#d97706", "#8b5cf6", "#ec4899"];
+
+    function escapeHtml(str) {{
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }}
+
     function toggleTheme() {{
         document.body.classList.toggle('dark');
         const isDark = document.body.classList.contains('dark');
         localStorage.setItem('cjk_flip_theme', isDark ? 'dark' : 'light');
     }}
+
+    function toggleAllAccordions(expand) {{
+        document.querySelectorAll('.provider-fail-card, .prompt-fail-group').forEach(d => {{
+            d.open = expand;
+        }});
+    }}
+
+    function getSelectedProviders() {{
+        const selected = [];
+        for (let i = 0; i < 5; i++) {{
+            const sel = document.getElementById('comp-slot-' + i);
+            if (sel && sel.value && !selected.includes(sel.value)) {{
+                selected.push(sel.value);
+            }}
+        }}
+        return selected;
+    }}
+
+    function updateComparison() {{
+        const container = document.getElementById('comp-results-container');
+        if (!container) return;
+        const selected = getSelectedProviders();
+        const currentLang = localStorage.getItem('cjk_flip_lang') || 'en';
+        const t = I18N[currentLang] || I18N.en;
+
+        if (selected.length < 2) {{
+            container.innerHTML = `
+                <div class="comp-empty-notice">
+                    <span style="font-size: 28px; display: block; margin-bottom: 8px;">⚖️</span>
+                    <p data-i18n="comp_need_two">${{t.comp_need_two}}</p>
+                </div>
+            `;
+            return;
+        }}
+
+        // Sort selected models by accuracy descending
+        const models = selected.map(p => {{
+            const sc = (BENCHMARK_DATA.provider_scores && BENCHMARK_DATA.provider_scores[p]) || {{}};
+            return {{
+                provider: p,
+                accuracy: sc.accuracy !== undefined ? sc.accuracy : 0.0,
+                avg_points: sc.avg_points !== undefined ? sc.avg_points : (sc.total_points || 0.0),
+                max_points: sc.max_points || 0.0,
+                passed_checks: sc.passed_checks || 0,
+                total_checks: sc.total_checks || 0,
+                category_scores: sc.category_scores || {{}},
+                mode: (BENCHMARK_DATA.provider_modes && BENCHMARK_DATA.provider_modes[p]) || 'individual',
+                disagreement: (BENCHMARK_DATA.run_disagreements && BENCHMARK_DATA.run_disagreements[p])
+            }};
+        }}).sort((a, b) => b.accuracy - a.accuracy);
+
+        const topAcc = models[0].accuracy;
+
+        // 1. Ranked Scorecard Table HTML
+        const rankBadges = ["🥇 1st", "🥈 2nd", "🥉 3rd", "4th", "5th"];
+        const rankBadgesKo = ["🥇 1위", "🥈 2위", "🥉 3위", "4위", "5위"];
+        let tableRows = "";
+        models.forEach((m, idx) => {{
+            const delta = m.accuracy - topAcc;
+            const deltaStr = idx === 0 
+                ? `<span class="badge badge-accent">${{currentLang === 'ko' ? '1위 (기준)' : 'Leader (Ref)'}}</span>` 
+                : `<strong style="color: #ef4444;">${{delta.toFixed(2)}}%p</strong>`;
+            const color = (BENCHMARK_DATA.provider_colors && BENCHMARK_DATA.provider_colors[m.provider]) || SLOT_COLORS[idx % SLOT_COLORS.length];
+            const rBadge = currentLang === 'ko' ? rankBadgesKo[idx] : rankBadges[idx];
+            const disVal = m.disagreement !== undefined ? `${{m.disagreement.toFixed(1)}}%` : '-';
+            const modeBadge = m.mode === 'mega' 
+                ? `<span class="badge badge-mega">${{t.mega_badge}}</span>` 
+                : `<span class="badge badge-individual">${{t.indiv_badge}}</span>`;
+
+            tableRows += `
+                <tr>
+                    <td><strong>${{rBadge}}</strong></td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="legend-color-dot" style="background-color: ${{color}};"></span>
+                            <strong>${{escapeHtml(m.provider)}}</strong>
+                            ${{modeBadge}}
+                        </div>
+                    </td>
+                    <td><strong style="font-size:15px;">${{m.accuracy.toFixed(2)}}%</strong></td>
+                    <td>${{deltaStr}}</td>
+                    <td>${{m.avg_points.toFixed(1)}} / ${{m.max_points.toFixed(1)}} pt</td>
+                    <td>${{m.passed_checks}} / ${{m.total_checks}}</td>
+                    <td>${{disVal}}</td>
+                </tr>
+            `;
+        }});
+
+        const scorecardHtml = `
+            <div class="comp-subcard">
+                <h4 style="margin-bottom: 12px; font-size: 15px;">${{t.scorecard_title}}</h4>
+                <div style="overflow-x: auto;">
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>${{t.rank_col}}</th>
+                                <th>${{t.model_col}}</th>
+                                <th>${{t.acc_col}}</th>
+                                <th>${{t.delta_col}}</th>
+                                <th>${{t.pts_col}}</th>
+                                <th>${{t.pass_rate_col}}</th>
+                                <th>${{t.disagreement_col}}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${{tableRows}}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        // 2. Dynamic Grouped Bar Chart SVG
+        const svgPlotW = 860.0;
+        const svgMarginL = 60.0;
+        const svgY0 = 310.0;
+        const svgPlotH = 250.0;
+        const numCats = (BENCHMARK_DATA.categories && BENCHMARK_DATA.categories.length) || 1;
+        const catSlotW = svgPlotW / numCats;
+        const numModels = models.length;
+        const barW = Math.max(8.0, Math.min(28.0, (catSlotW - 20) / numModels - 4));
+        const barGap = 3.0;
+        const groupW = numModels * barW + (numModels - 1) * barGap;
+        const groupOff = (catSlotW - groupW) / 2.0;
+
+        let svgGrid = "";
+        [0, 20, 40, 60, 80, 100].forEach(tick => {{
+            const yPos = svgY0 - (tick / 100.0) * svgPlotH;
+            svgGrid += `<line x1="${{svgMarginL}}" y1="${{yPos.toFixed(1)}}" x2="940" y2="${{yPos.toFixed(1)}}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />`;
+            svgGrid += `<text x="${{svgMarginL - 10}}" y="${{(yPos + 4).toFixed(1)}}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">${{tick}}%</text>`;
+        }});
+
+        let svgBars = "";
+        let svgLabels = "";
+        (BENCHMARK_DATA.categories || []).forEach((cat, cIdx) => {{
+            const slotX = svgMarginL + cIdx * catSlotW;
+            const cCode = cat.split("_")[0];
+            const catName = (BENCHMARK_DATA.category_names && BENCHMARK_DATA.category_names[currentLang] && BENCHMARK_DATA.category_names[currentLang][cCode])
+                ? BENCHMARK_DATA.category_names[currentLang][cCode]
+                : (cat.split("_")[1] || cat);
+
+            models.forEach((m, mIdx) => {{
+                const cScore = (m.category_scores[cat] && m.category_scores[cat].pct !== undefined) ? m.category_scores[cat].pct : 0.0;
+                const bH = (cScore / 100.0) * svgPlotH;
+                const bx = slotX + groupOff + mIdx * (barW + barGap);
+                const by = svgY0 - bH;
+                const col = (BENCHMARK_DATA.provider_colors && BENCHMARK_DATA.provider_colors[m.provider]) || SLOT_COLORS[mIdx % SLOT_COLORS.length];
+
+                svgBars += `<rect x="${{bx.toFixed(1)}}" y="${{by.toFixed(1)}}" width="${{barW.toFixed(1)}}" height="${{bH.toFixed(1)}}" rx="3" fill="${{col}}">
+                    <title>${{escapeHtml(m.provider)}} - ${{cCode}} (${{catName}}): ${{cScore.toFixed(1)}}%</title>
+                </rect>`;
+                if (barW >= 14.0) {{
+                    svgBars += `<text x="${{(bx + barW / 2).toFixed(1)}}" y="${{Math.max(15, by - 5).toFixed(1)}}" text-anchor="middle" font-size="9" font-weight="600" fill="currentColor">${{cScore.toFixed(0)}}%</text>`;
+                }}
+            }});
+
+            svgLabels += `<text x="${{(slotX + catSlotW / 2).toFixed(1)}}" y="${{svgY0 + 20}}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">${{cCode}}</text>`;
+            svgLabels += `<text x="${{(slotX + catSlotW / 2).toFixed(1)}}" y="${{svgY0 + 35}}" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.75">${{escapeHtml(catName.substring(0, 16))}}</text>`;
+        }});
+
+        let legendHtml = '<div class="chart-legend" style="margin-top: 10px;">';
+        models.forEach((m, idx) => {{
+            const col = (BENCHMARK_DATA.provider_colors && BENCHMARK_DATA.provider_colors[m.provider]) || SLOT_COLORS[idx % SLOT_COLORS.length];
+            legendHtml += `
+                <div class="legend-item">
+                    <span class="legend-color-dot" style="background-color: ${{col}};"></span>
+                    <span class="legend-text"><strong>${{escapeHtml(m.provider)}}</strong> (${{m.accuracy.toFixed(1)}}%)</span>
+                </div>
+            `;
+        }});
+        legendHtml += '</div>';
+
+        const chartHtml = `
+            <div class="comp-subcard" style="margin-top: 18px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                    <h4 style="font-size: 15px;">${{t.comp_chart_title}}</h4>
+                    ${{legendHtml}}
+                </div>
+                <svg viewBox="0 0 960 370" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                    <g class="grid-lines">${{svgGrid}}</g>
+                    <g class="bars">${{svgBars}}</g>
+                    <g class="labels">${{svgLabels}}</g>
+                </svg>
+            </div>
+        `;
+
+        // 3. Category Highlights (Best vs Needs Improvement)
+        let highlightCards = "";
+        (BENCHMARK_DATA.categories || []).forEach(cat => {{
+            const cCode = cat.split("_")[0];
+            const catName = (BENCHMARK_DATA.category_names && BENCHMARK_DATA.category_names[currentLang] && BENCHMARK_DATA.category_names[currentLang][cCode])
+                ? BENCHMARK_DATA.category_names[currentLang][cCode]
+                : (cat.split("_")[1] || cat);
+
+            let maxScore = -1.0;
+            let minScore = 999.0;
+            models.forEach(m => {{
+                const sc = (m.category_scores[cat] && m.category_scores[cat].pct !== undefined) ? m.category_scores[cat].pct : 0.0;
+                if (sc > maxScore) maxScore = sc;
+                if (sc < minScore) minScore = sc;
+            }});
+
+            const bestModels = models.filter(m => {{
+                const sc = (m.category_scores[cat] && m.category_scores[cat].pct !== undefined) ? m.category_scores[cat].pct : 0.0;
+                return Math.abs(sc - maxScore) < 0.001;
+            }});
+            const worstModels = models.filter(m => {{
+                const sc = (m.category_scores[cat] && m.category_scores[cat].pct !== undefined) ? m.category_scores[cat].pct : 0.0;
+                return Math.abs(sc - minScore) < 0.001;
+            }});
+
+            const isTied = Math.abs(maxScore - minScore) < 0.001;
+            const spread = maxScore - minScore;
+
+            let bestBadges = bestModels.map(m => `<span class="highlight-pill best-pill">🏆 ${{escapeHtml(m.provider)}} (${{maxScore.toFixed(1)}}%)</span>`).join(" ");
+            let worstBadges = isTied 
+                ? `<span class="highlight-pill tied-pill">${{t.tied_label}} (${{maxScore.toFixed(1)}}%)</span>`
+                : worstModels.map(m => `<span class="highlight-pill worst-pill">⚠️ ${{escapeHtml(m.provider)}} (${{minScore.toFixed(1)}}%)</span>`).join(" ");
+
+            highlightCards += `
+                <div class="highlight-card">
+                    <div class="highlight-head">
+                        <span class="highlight-code">${{cCode}}</span>
+                        <strong class="highlight-name">${{escapeHtml(catName)}}</strong>
+                        ${{!isTied ? `<span class="highlight-spread">+${{spread.toFixed(1)}}%p</span>` : ''}}
+                    </div>
+                    <div class="highlight-row">
+                        <span class="highlight-label">${{t.best_label}}:</span>
+                        <div class="highlight-values">${{bestBadges}}</div>
+                    </div>
+                    <div class="highlight-row">
+                        <span class="highlight-label">${{t.needs_imp_label}}:</span>
+                        <div class="highlight-values">${{worstBadges}}</div>
+                    </div>
+                </div>
+            `;
+        }});
+
+        const highlightsHtml = `
+            <div class="comp-subcard" style="margin-top: 18px;">
+                <h4 style="margin-bottom: 12px; font-size: 15px;">${{t.highlights_title}}</h4>
+                <div class="highlights-grid">
+                    ${{highlightCards}}
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = scorecardHtml + chartHtml + highlightsHtml;
+    }}
+
+    function initComparisonSlots() {{
+        const providers = BENCHMARK_DATA.providers || [];
+        const currentLang = localStorage.getItem('cjk_flip_lang') || 'en';
+        const noneText = currentLang === 'ko' ? '(선택 안함)' : '(None)';
+
+        for (let i = 0; i < 5; i++) {{
+            const sel = document.getElementById('comp-slot-' + i);
+            if (!sel) continue;
+            sel.innerHTML = '';
+            
+            const optNone = document.createElement('option');
+            optNone.value = '';
+            optNone.textContent = noneText;
+            optNone.dataset.none = "true";
+            sel.appendChild(optNone);
+
+            providers.forEach(p => {{
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                sel.appendChild(opt);
+            }});
+
+            // Smart initial selection:
+            if (i === 0 && providers.length > 0) sel.value = providers[0];
+            else if (i === 1 && providers.length > 1) sel.value = providers[1];
+            else if (i === 2 && providers.length > 2) sel.value = providers[2];
+            else sel.value = '';
+        }}
+        updateComparison();
+    }}
+
+    function resetComparisonSlots() {{
+        initComparisonSlots();
+    }}
+
+    function setLanguage(lang) {{
+        localStorage.setItem('cjk_flip_lang', lang);
+        document.documentElement.lang = lang;
+
+        // Toggle button active classes
+        const btnEn = document.getElementById('lang-btn-en');
+        const btnKo = document.getElementById('lang-btn-ko');
+        if (btnEn) btnEn.classList.toggle('active', lang === 'en');
+        if (btnKo) btnKo.classList.toggle('active', lang === 'ko');
+
+        const t = I18N[lang] || I18N.en;
+
+        // Update all data-i18n elements
+        document.querySelectorAll('[data-i18n]').forEach(el => {{
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) {{
+                el.innerHTML = t[key];
+            }}
+        }});
+
+        // Update localized sub-labels in SVG charts
+        document.querySelectorAll('.cat-label-sub').forEach(el => {{
+            const val = el.getAttribute('data-' + lang);
+            if (val) el.textContent = val;
+        }});
+
+        // Update prompt titles in failure accordion
+        document.querySelectorAll('.prompt-title').forEach(el => {{
+            const val = el.getAttribute('data-' + lang);
+            if (val) el.textContent = val;
+        }});
+
+        // Update (None) options in comparison dropdowns
+        document.querySelectorAll('option[data-none]').forEach(opt => {{
+            opt.textContent = (lang === 'ko' ? '(선택 안함)' : '(None)');
+        }});
+
+        // Refresh interactive comparison view
+        updateComparison();
+    }}
+
+    // Theme & Language Initialization
     (function() {{
-        const saved = localStorage.getItem('cjk_flip_theme');
-        if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {{
+        // Theme
+        const savedTheme = localStorage.getItem('cjk_flip_theme');
+        if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {{
             document.body.classList.add('dark');
+        }}
+
+        // Comparison Slots
+        initComparisonSlots();
+
+        // Language (English default unless explicitly saved as ko)
+        const savedLang = localStorage.getItem('cjk_flip_lang');
+        if (savedLang === 'ko') {{
+            setLanguage('ko');
+        }} else {{
+            setLanguage('en');
         }}
     }})();
     </script>
@@ -1942,6 +2956,13 @@ def main():
         help="Enable multi-run analysis (evaluates Txx.r1.md, Txx.r2.md, etc.)"
     )
     parser.add_argument(
+        "--lang",
+        type=str,
+        default="en",
+        choices=["en", "ko"],
+        help="Output language for console, summary markdown, and dashboard (en or ko, default: en)"
+    )
+    parser.add_argument(
         "--output-summary",
         type=str,
         default=str(Path(__file__).resolve().parent / "results_summary.md"),
@@ -1967,42 +2988,50 @@ def main():
     summary_path = Path(args.output_summary)
     csv_path = Path(args.output_csv)
     html_path = Path(args.output_html)
+    lang = args.lang
+    is_ko = (lang == "ko")
 
     if not master_path.exists():
-        print(f"[ERROR] checks_master.json not found at {master_path}", file=sys.stderr)
+        err_msg = f"[오류] checks_master.json 파일을 찾을 수 없습니다: {master_path}" if is_ko else f"[ERROR] checks_master.json not found at {master_path}"
+        print(err_msg, file=sys.stderr)
         sys.exit(1)
 
     pack_dir = Path(__file__).resolve().parent
 
     results = run_scoring(master_path, responses_path, is_runs_mode=args.runs)
-    markdown_report = format_summary_markdown(results)
+    markdown_report = format_summary_markdown(results, lang=lang)
 
     # Print to stdout
     print(markdown_report)
 
     # Save results_summary.md
     summary_path.write_text(markdown_report, encoding="utf-8")
-    print(f"\n[INFO] Saved results summary to: {summary_path}")
+    saved_summary_msg = f"\n[안내] 평가 결과 요약을 저장했습니다: {summary_path}" if is_ko else f"\n[INFO] Saved results summary to: {summary_path}"
+    print(saved_summary_msg)
 
     # Save failures.csv (write_failures_csv also removes a stale CSV on zero failures)
     write_failures_csv(results["failures"], csv_path)
     if results["failures"]:
-        print(f"[INFO] Saved {len(results['failures'])} check failures to: {csv_path}")
+        fail_msg = f"[안내] {len(results['failures'])}건의 실패 체크 내역을 저장했습니다: {csv_path}" if is_ko else f"[INFO] Saved {len(results['failures'])} check failures to: {csv_path}"
+        print(fail_msg)
     else:
         if results.get("providers"):
-            print("[INFO] Zero check failures detected! 100% pass rate.")
+            pass_msg = "[안내] 실패 0건: 전수 체크 100% 무결점 통과." if is_ko else "[INFO] Zero check failures detected! 100% pass rate."
+            print(pass_msg)
         else:
-            print("[INFO] No providers found to score.")
+            no_prov_msg = "[안내] 평가할 프로바이더 응답이 발견되지 않았습니다." if is_ko else "[INFO] No providers found to score."
+            print(no_prov_msg)
 
     # Save report.html
-    generate_html_report(results, html_path)
-    print(f"[INFO] Saved visual HTML dashboard to: {html_path}")
+    generate_html_report(results, html_path, lang=lang)
+    saved_html_msg = f"[안내] 시각적 HTML 대시보드를 저장했습니다: {html_path}" if is_ko else f"[INFO] Saved visual HTML dashboard to: {html_path}"
+    print(saved_html_msg)
 
     # Ensure pack_dir copy of report.html is always kept up to date
     pack_report = pack_dir / "report.html"
     if html_path.resolve() != pack_report.resolve():
         try:
-            generate_html_report(results, pack_report)
+            generate_html_report(results, pack_report, lang=lang)
         except Exception:
             pass
 
@@ -2010,7 +3039,14 @@ def main():
     if results.get("truncation_warnings"):
         print("\n" + "=" * 80)
         for p, w_info in results["truncation_warnings"].items():
-            print(f"⚠️ [진단 경고] {p}: {w_info['message']}")
+            if is_ko:
+                print(f"⚠️ [진단 경고] {p}: {w_info['message']}")
+            else:
+                first_m = w_info.get('first_missing', '')
+                cnt = w_info.get('missing_count', 0)
+                rid = w_info.get('run', '')
+                run_tag = f"[{rid}] " if rid else ""
+                print(f"⚠️ [Diagnostic Warning] {p}: {run_tag}Output truncated starting at question {first_m}: Increase Max Output Tokens to 4,096–8,192 (Missing {cnt} questions)")
         print("=" * 80 + "\n")
 
 if __name__ == "__main__":

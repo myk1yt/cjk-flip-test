@@ -1,220 +1,223 @@
-🌐 [English](README_EN.md) | [한국어](README.md)
+🌐 [English](README.md) | [한국어](README_KO.md)
 
-# Zoo Code Custom Mode용 CJK-Flip 테스트 팩
-## 동일 주입 · 자동 결정적 판정 키트 (Zero-External-Dependency)
+# CJK-Flip Test Pack for Zoo Code Custom Mode
+## Identical Injection & Deterministic Evaluation Kit (Zero-External-Dependency)
 
 > [!IMPORTANT]
-> **측정 대상에 관한 정직한 명명 (Measurement Target Declaration)**  
-> 본 테스트 팩을 통해 산출되는 모든 지표와 수치는 **"모델 자체의 일반적 지능이나 품질"**을 의미하지 않습니다.  
-> 본 결과는 오직 **"동일 하네스(Zoo Code Custom Mode) 조건 하에서 동일한 프롬프트를 주입했을 때 나타나는 프로바이더/양자화 간 출력 차이(Output Divergence across Providers/Quantizations under Identical Harness Conditions)"**만을 정직하게 측정하고 보고합니다.
+> **Measurement Target Declaration**  
+> All metrics and numerical scores produced by this test pack do **NOT** indicate the "general intelligence or overall capability of the model."  
+> These results solely and objectively measure and report the **"Output Divergence across Providers/Quantizations under Identical Harness Conditions (Zoo Code Custom Mode) with Identical Prompt Injections."**
 
 ---
 
-## 0. 배경 · 목적 · 실험 설계
+## 0. Background, Objective, and Experimental Design
 
-### 0.1 배경 및 문제의식
-VS Code 기반 LLM 보조 도구(Zoo Code 등)는 동일한 모델 가중치를 기반으로 하더라도, 백엔드 서빙 프로바이더(Anthropic Direct, OpenAI Direct, OpenRouter, DeepInfra, Together, 로컬 Ollama/vLLM 등)와 양자화 정밀도(FP16, FP8, INT8, FP4, AWQ, GGUF Q4_K_M 등)에 따라 미세한 출력 편차와 품질 열화가 발생합니다.
-특히 **한중일(CJK) 다국어 처리** 영역은 다음과 같은 취약점을 지닙니다:
-1. **저빈도 토큰 손실**: 희귀 한자, 벽자(僻字), 인명·지명용 고유명사 토큰 임베딩이 양자화 단계(FP4급)에서 가장 먼저 왜곡됩니다.
-2. **자형 혼동**: 중국어 간체자, 번체자(정체자), 일본어 신자체(新字体), 구자체(舊字體) 간의 1:1 글리프 변환이 문맥 없이 주어질 때 모델의 변환 정확도가 급격히 하락합니다.
-3. **엄격한 포맷 이탈**: JSON 스키마, 문장 개수, 음수 제약 조건(한자 사용 금지 등) 준수율이 경량화 프로바이더에서 붕괴됩니다.
+### 0.1 Background and Problem Statement
+Even when running identical foundational model weights, VS Code-based LLM assistants (such as Zoo Code) exhibit subtle output divergence and quality degradation depending on backend serving providers (Anthropic Direct, OpenAI Direct, OpenRouter, DeepInfra, Together, local Ollama/vLLM, etc.) and quantization precision levels (FP16, FP8, INT8, FP4, AWQ, GGUF Q4_K_M, etc.).
 
-### 0.2 실험 설계 원칙
-- **철저한 통제 변인**: Zoo Code의 Custom Mode 설정(`test_cjk_flip`), 온도(temperature), 주입 순서, 테스트 프롬프트, 작업 디렉토리 환경을 100% 동일하게 고정합니다.
-- **유일한 독립 변인**: Zoo Code의 **프로바이더 설정(Provider Profile / Quantization)**만을 교체합니다.
-- **종속 변인**: 8개 영역 40개 프롬프트에 걸쳐 배치된 **298개의 결정적 체크(Checks)** 통과 여부 및 카테고리별 정확도 편차(%p).
+In particular, **CJK (Chinese, Japanese, Korean) multilingual processing** exhibits notable vulnerabilities:
+1. **Low-Frequency Token Loss**: Token embeddings for rare Hanzi/Hanja, obscure characters (僻字), and personal/geographical proper nouns are the first to degrade during aggressive quantization (such as FP4).
+2. **Glyph Confusion**: When 1:1 glyph conversions between Simplified Chinese, Traditional Chinese (Orthodox), Japanese Shinjitai (新字体), and Kyujitai (舊字體) are requested without contextual hints, model conversion accuracy drops sharply under quantization.
+3. **Strict Format Deviations**: Compliance with JSON schemas, sentence count constraints, and negative constraints (e.g., prohibition of Chinese characters) tends to collapse in lighter-weight or heavily quantized backends.
+
+### 0.2 Experimental Design Principles
+- **Strictly Controlled Variables**: Zoo Code Custom Mode configuration (`test_cjk_flip`), temperature, prompt injection sequence, test prompts, and workspace directory environment are 100% fixed and held constant.
+- **Sole Independent Variable**: Only the Zoo Code **backend provider configuration (Provider Profile / Quantization)** is swapped.
+- **Dependent Variables**: Pass/fail outcomes across **298 deterministic checks** distributed across 40 prompts in 8 domains, alongside category-level accuracy differentials (%p).
 
 ---
 
-## 1. 산출물 구조
+## 1. Directory and Artifact Structure
 
 ```text
 flip-test-pack/
-├── README.md              # 준비·실행·판정 절차, 통제 체크리스트, 통계적 한계, 가정 (본 문서)
-├── README_EN.md           # 영문 가이드 (English Documentation)
-├── run_score.bat          # [1-Click] 윈도우 탐색기 더블클릭 단일 회차 채점 및 대시보드 브라우저 자동 팝업
-├── run_score_runs.bat     # [1-Click] 윈도우 탐색기 더블클릭 다회차 채점(--runs) 및 대시보드 브라우저 팝업
-├── report.html            # [신규] 순수 HTML5 + 인라인 SVG/CSS 반응형 시각적 대시보드 리포트
-├── run_manifest.md        # 실험 일시, 모델명, 양자화, 클라이언트 버전을 기록하는 장부
-├── checks_master.json     # 전체 40문항 298개 체크 마스터 규격 (JSON 스키마 및 기대값 정의)
-├── data_validation.log    # 생성 시 수행된 100% 독립 재계산 및 20% 무작위 표본 대조 검증 기록
-├── score_results.py       # 표준 라이브러리 기반 무의존성 결정적 채점 및 HTML 리포트 생성 스크립트
+├── README.md              # Setup, execution, evaluation procedures, control checklist, limitations, and assumptions (This document, English)
+├── README_KO.md           # Korean Documentation (한국어 상세 가이드)
+├── run_score.bat          # [1-Click] Windows Explorer double-click single-run evaluation & auto-popup browser dashboard
+├── run_score_runs.bat     # [1-Click] Windows Explorer double-click multi-run evaluation (--runs) & auto-popup browser dashboard
+├── report.html            # Pure HTML5 + inline SVG/CSS responsive visual dashboard report
+├── run_manifest.md        # Experiment manifest logging timestamps, model IDs, quantization tiers, and client versions
+├── checks_master.json     # Master specification of 298 checks across 40 prompts (JSON schemas & ground truth)
+├── data_validation.log    # Audit log of 100% independent recalculation & 20% random sample cross-verification
+├── score_results.py       # Zero-dependency deterministic evaluation & HTML dashboard generation script (Python stdlib)
 ├── prompts/
-│   ├── MEGA_BATCH.md      # [1회 복붙용] 40문항(F1~F10) 전체 통합 메가 배치 프롬프트
-│   ├── T01.md ~ T05.md    # [F1] 언어 정체성 플립 (5문항)
-│   ├── T06.md ~ T10.md    # [F3] 자형 변환: 간↔번, 신↔구 (5문항, 130개 체크)
-│   ├── T11.md ~ T15.md    # [F6] 문자열 정밀 조작 (5문항)
-│   ├── T16.md ~ T20.md    # [F7] 장문 정확 인용 (5문항, 300~500자 단락 슬라이싱)
-│   ├── T21.md ~ T25.md    # [F8] 출력 형식 제약 (5문항, JSON/CSV/문장수/음수제약)
-│   ├── T26.md ~ T30.md    # [F4] 회귀 번역: 2단계 왕복 번역 (5문항, chrF 및 용어집)
-│   ├── T31.md ~ T35.md    # [F9] 희귀 한자·한문 숙어 지식 (5문항, 저빈도 토큰)
-│   └── T36.md ~ T40.md    # [F10] 다단계 추론 (5문항, 중간단계 및 최종 결론)
-├── responses/             # 사용자가 프로바이더별 응답을 저장하는 디렉토리 (메가/개별 자동 감지)
-│   ├── sample_fp8/        # [예시] 무손실 FP8 레퍼런스 응답 (MEGA.md + T01~T40.md, 100% 통과)
-│   └── sample_fp4/        # [예시] FP4급 양자화 손실 재현 응답 (MEGA.md + T01~T40.md, 97.23% 통과)
+│   ├── MEGA_BATCH.md      # [1-Click Copy-Paste] Unified Mega-Batch prompt containing all 40 questions (F1–F10)
+│   ├── T01.md ~ T05.md    # [F1] Language Identity Flip (5 questions)
+│   ├── T06.md ~ T10.md    # [F3] Glyph Transformation: Simp↔Trad, Shin↔Kyu (5 questions, 130 checks)
+│   ├── T11.md ~ T15.md    # [F6] Precision String Manipulation (5 questions)
+│   ├── T16.md ~ T20.md    # [F7] Long-Context Exact Citation (5 questions, 300–500 character excerpt slicing)
+│   ├── T21.md ~ T25.md    # [F8] Output Format Constraints (5 questions, JSON/CSV/sentence count/negative constraints)
+│   ├── T26.md ~ T30.md    # [F4] Round-Trip Translation (5 questions, chrF score & glossary preservation)
+│   ├── T31.md ~ T35.md    # [F9] Rare Hanzi & Classical Idioms (5 questions, low-frequency tokens)
+│   └── T36.md ~ T40.md    # [F10] Multi-Step Reasoning (5 questions, intermediate steps & final conclusions)
+├── responses/             # Directory where user saves provider responses (auto-detects Mega-Batch / individual files)
+│   ├── sample_fp8/        # [Sample] Lossless FP8 reference response (MEGA.md + T01~T40.md, 100% pass)
+│   └── sample_fp4/        # [Sample] FP4-level quantization degradation response (MEGA.md + T01~T40.md, 97.23% pass)
 └── tests/
-    └── test_scorer.py     # 채점기 자체 검증 유닛 테스트 (56개 테스트, 메가 배치/토큰절단/공정성회귀/HTML생성 전수 완비)
+    └── test_scorer.py     # Scorer self-verification test suite (56 tests covering Mega-Batch, truncation, fairness, HTML)
 ```
 
 ---
 
-## 2. 테스트 프롬프트 카테고리 구성 (총 40문항 · 298개 Checks)
+## 2. Test Prompt Category Architecture (Total 40 Questions · 298 Checks)
 
-| 카테고리 코드 | 카테고리 명칭 | 문항 수 | 체크 수 | 주요 판별 대상 및 양자화 민감도 |
+| Category Code | Category Name | Questions | Checks | Primary Discriminative Target & Quantization Sensitivity |
 | :---: | :--- | :---: | :---: | :--- |
-| **F1** | 언어 정체성 플립 | 5 | 25 | 한자 중심 모호 문장의 언어(국한문혼용/일/간체/번체) 식별 및 한국어 정확 전환 |
-| **F3** | 자형 변환 | 5 | 130 | 간체↔번체, 신자체↔구자체 25자 1:1 글자 매핑 (글자당 check 1개, check 밀도의 핵심) |
-| **F6** | 문자열 정밀 조작 | 5 | 24 | CJK 문자 수, N번째 글자, 짝수 인덱스열, 역순(reverse), 특정 글자 빈도 계측 |
-| **F7** | 장문 정확 인용 | 5 | 20 | 300~500자 CJK 문단 내 프로그램 지정 슬라이스 구간의 무손실 원문 복제 |
-| **F8** | 출력 형식 제약 | 5 | 24 | 엄격한 JSON 스키마, 정확한 3문장 개수, 한자/영문 사용 금지(음수 제약), CSV 포맷 |
-| **F4** | 회귀 번역 | 5 | 25 | 한국어→일본어/중국어→한국어 2단계 왕복 번역 및 필수 용어집 보존율, chrF 유사도 |
-| **F9** | 희귀 한자·한문 숙어 | 5 | 25 | 초희귀 중첩자(疊字), 다음자(多音字), 고사성어, 조선 관직명 표준 음/뜻 (저빈도 토큰 정밀도) |
-| **F10** | 다단계 추론 | 5 | 25 | 60갑자 연대 역산, 한자 총획수 암호 수열, 5x5 바둑판 격자 이동, 전통 도량형 단위 환산 |
-| **합계** | **8개 카테고리** | **40개** | **298개** | **FP4 vs FP8 수준의 0.5%p 단위 미세 차이 판별력 확보** |
+| **F1** | Language Identity Flip | 5 | 25 | Identification of ambiguous Hanzi-heavy text language (Mixed Script / Japanese / Simplified / Traditional) and accurate Korean rendering |
+| **F3** | Glyph Transformation | 5 | 130 | 1:1 mapping of 25 characters across Simplified↔Traditional, Shinjitai↔Kyujitai (1 check per character, core check density) |
+| **F6** | Precision String Manipulation | 5 | 24 | CJK character counts, N-th character extraction, even-index subsequence, string reversal, specific character frequency counts |
+| **F7** | Long-Context Exact Citation | 5 | 20 | Lossless verbatim reproduction of programmatically sliced passages from 300–500 character CJK source texts |
+| **F8** | Output Format Constraints | 5 | 24 | Strict JSON schemas, exact 3-sentence counts, prohibition of Chinese/English characters (negative constraints), CSV formatting |
+| **F4** | Round-Trip Translation | 5 | 25 | Two-stage round-trip translation (Korean → Japanese/Chinese → Korean), mandatory glossary retention, chrF character n-gram similarity |
+| **F9** | Rare Hanzi & Classical Idioms | 5 | 25 | Ultra-rare repeated characters (疊字), polyphonic characters (多音字), classical idioms, Joseon official title standard readings and glosses |
+| **F10** | Multi-Step Reasoning | 5 | 25 | Sexagenary cycle year calculation, Hanzi total stroke count cipher sequences, 5x5 Baduk grid coordinates, traditional measurement conversions |
+| **Total** | **8 Categories** | **40** | **298** | **High discriminative resolution capable of detecting fine-grained 0.5%p differentials (FP4 vs. FP8)** |
 
-### 공통 엄격 작성 규칙
-1. **자료 완전 내장**: 모든 지문, 한자 목록, 공식, 용어집은 프롬프트 본문에 100% 내장되어 있으며 외부 검색이나 파일 조회를 요구하지 않습니다.
-2. **마커 격리 (⟪ ... ⟫)**: 답변을 반드시 유니코드 마커 `⟪` 와 `⟫` 사이에만 작성하도록 강제하여, 하네스 앞뒤 인사말이나 부가 설명을 원천 차단하고 순수 모델 출력만을 정확히 추출합니다.
-3. **규격화된 메타데이터**: 모든 프롬프트 파일(`Txx.md`)에는 카테고리, 난이도(1~3), 예상 민감 태그(`quant-sensitive`, `format-sensitive`, `rare-token`), 양자화 민감 근거 1줄이 명시되어 있습니다.
-
----
-
-## 3. 정답 키 신뢰성 및 검증 완료 증명
-
-본 테스트 팩의 정답 키는 사람의 수작업 복사나 감으로 작성되지 않았으며, 생성 스크립트(`generate_pack.py`)를 통해 **수학적·프로그래밍적으로 100% 검증**되었습니다:
-
-1. **자형 변환 1:1 대조 및 20% 무작위 표본 독립 교차 검증**:
-   - F3(T06~T10)의 125개 자형 변환 글자는 Unicode CJK Unified Ideographs 표준 블록과 강희자전체/신자체 대응표를 바탕으로 전수 검증되었습니다.
-   - 전체 자형 체크 중 **무작위 20% 표본(25개 글자)**을 추출하여 독립 유니코드 문자명 대조를 완료했습니다.
-2. **문자열 정밀 연산 및 역순 재계산**:
-   - F6(T11~T15)의 문자 수, N번째 인덱스 문자, 특정 글자 출현 횟수, 역순 문자열은 Python 내장 슬라이싱 및 카운터 알고리즘으로 독립 재계산되어 일치함을 확인했습니다.
-3. **F7 장문 구간 프로그램 슬라이싱**:
-   - 300~500자 지문(`text16` ~ `text20`)을 코드로 정의한 후, 지정된 시작/종료 인덱스로 직접 슬라이싱(`text[start:end]`)한 결과를 정답 키에 저장하여 인간의 오타 개입을 원천 차단했습니다.
-4. **검증 기록 (data_validation.log)**:
-   - 전 문항 298개 체크가 단 1개의 오류도 없이 통과되었으며, 그 상세 로그가 `data_validation.log`에 보존되어 있습니다.
+### Common Strict Authoring Guidelines
+1. **Fully Self-Contained**: All reading passages, character lists, formulas, and glossaries are 100% embedded within prompt bodies, requiring no external web search or file lookup.
+2. **Marker Isolation (`⟪ ... ⟫`)**: Responses must be enclosed strictly within the Unicode markers `⟪` and `⟫`. This eliminates extraneous conversational pleasantries or preamble and allows precise extraction of raw model output.
+3. **Standardized Metadata**: Every prompt file (`Txx.md`) explicitly specifies its category, difficulty rating (1–3), anticipated sensitivity tags (`quant-sensitive`, `format-sensitive`, `rare-token`), and a one-sentence rationale for quantization sensitivity.
 
 ---
 
-## 4. 단계별 실행 절차 (Step-by-Step Guide)
+## 3. Answer Key Reliability & Mathematical/Algorithmic Verification Proof
 
-### 1단계: 통제 환경 준비 (Zoo Code Custom Mode 설정)
-1. 빈 폴더를 생성하고 VS Code로 엽니다 (전역 룰 파일 `.cursorrules`, `.windsurfrules`, `.gemini/rules` 등 간섭 요소를 배제한 순수 빈 작업 영역).
-2. Zoo Code 확장을 실행하고, 전용 Custom Mode를 신규 생성합니다:
-   - **모드 이름**: `test_cjk_flip` (또는 `test_cjp_flip`)
-   - **Role Definition (역할 정의)**: 아래 영문 단 1줄만 정확히 입력합니다:
+The answer keys in this test pack were not manually transcribed or intuited; they were **100% verified mathematically and programmatically** via the generator script (`generate_pack.py`):
+
+1. **1:1 Glyph Mapping & 20% Random Sample Independent Cross-Verification**:
+   - The 125 glyph conversions in F3 (T06–T10) were fully validated against the Unicode CJK Unified Ideographs standard block, Kangxi Dictionary tables, and official Shinjitai/Kyujitai conversion tables.
+   - An independent **20% random sample (25 characters)** was extracted and cross-checked against standard Unicode character names.
+2. **Deterministic String Operations & Reversal Recalculation**:
+   - Character counts, N-th index characters, character frequency counts, and reversed strings in F6 (T11–T15) were independently recalculated and verified using Python standard string slicing and Counter algorithms.
+3. **F7 Long-Context Algorithmic Slicing**:
+   - The 300–500 character passages (`text16`–`text20`) were defined in code, and target slice segments were extracted directly via programmatic index slicing (`text[start:end]`), completely precluding human typographical errors.
+4. **Validation Record (`data_validation.log`)**:
+   - All 298 checks across all 40 questions passed validation with zero errors, and the detailed audit log is preserved in `data_validation.log`.
+
+---
+
+## 4. Step-by-Step Execution Guide
+
+### Step 1: Controlled Environment Setup (Zoo Code Custom Mode)
+1. Create an empty folder and open it in VS Code (ensuring a clean workspace free from global instruction files like `.cursorrules`, `.windsurfrules`, or `.gemini/rules`).
+2. Open the Zoo Code extension and create a new Custom Mode:
+   - **Mode Name**: `test_cjk_flip` (or `test_cjp_flip`)
+   - **Role Definition**: Enter the following single English sentence verbatim:
      > `Perform only the given task and provide no unnecessary explanations.`
-   - **도구 권한(Tools/MCP)**: File Edit, Write, Terminal, MCP 등 모든 도구 사용 권한을 **전부 해제(`None`)**하여 모델이 임의로 파일을 수정하거나 스크립트를 생성하지 못하도록 통제합니다.
-3. Temperature 설정이 가능한 프로바이더 프로필의 경우 **`0`으로 고정**합니다.
-4. **단일 독립 변인 통제**: 모드 설정, 작업 폴더(빈 폴더), 프롬프트 순서 등 모든 환경을 100% 동일하게 고정한 채, 오직 **프로바이더(Provider Profile / Quantization)** 설정만 교체하며 실행합니다.
+   - **Tool Permissions (Tools/MCP)**: Revoke all tool permissions (File Edit, Write, Terminal, MCP, etc.) completely (**`None`**) to prevent the model from creating scratch scripts or altering workspace files.
+3. If the provider profile supports temperature configuration, lock it to **`0`**.
+4. **Single Independent Variable Isolation**: Maintain the exact same mode configuration, empty workspace, and prompt injection sequence across all runs, varying **only the backend provider configuration (Provider Profile / Quantization)**.
 
-### 2단계: 프로바이더 A 실행 (메가 배치 또는 개별 모드)
-- **방법 1 (권장: 1회 복붙 메가 배치 모드)**:
-  1. Zoo Code에서 `test_cjk_flip` 모드를 선택하고 대상 프로바이더(프로바이더 A)를 지정합니다.
-  2. `flip-test-pack/prompts/MEGA_BATCH.md` 파일 전문을 복사하여 Zoo Code 입력창에 1회 붙여넣습니다.
-  3. 모델이 출력한 `=== [T01] ===` ~ `=== [T40] ===` 응답 전문을 복사하여:
-     `flip-test-pack/responses/{provider-a}/MEGA.md` 파일 1개로 저장합니다.
-- **방법 2 (전통적 개별 모드)**:
-  1. Zoo Code에서 `test_cjk_flip` 모드가 선택되어 있는지 확인하고 프로바이더 A를 지정합니다.
-  2. `flip-test-pack/prompts/` 폴더의 `T01.md`부터 `T40.md`까지 지시된 번호 순서대로 복사-붙여넣기합니다.
-  3. 각 응답을 `flip-test-pack/responses/{provider-a}/T01.md` ~ `T40.md` 경로에 저장합니다.
+### Step 2: Running Provider A (Mega-Batch or Individual Mode)
+- **Method 1 (Recommended: 1-Click Copy-Paste Mega-Batch Mode)**:
+  1. In Zoo Code, select the `test_cjk_flip` mode and select the target provider (Provider A).
+  2. Copy the entire contents of `flip-test-pack/prompts/MEGA_BATCH.md` and paste it into the Zoo Code input box once.
+  3. Copy the model's full response containing `=== [T01] ===` through `=== [T40] ===` and save it as a single file:
+     `flip-test-pack/responses/{provider-a}/MEGA.md`
+- **Method 2 (Traditional Individual Mode)**:
+  1. Verify `test_cjk_flip` mode is active in Zoo Code and target Provider A.
+  2. Copy and paste prompts `T01.md` through `T40.md` sequentially from `flip-test-pack/prompts/`.
+  3. Save each individual response to `flip-test-pack/responses/{provider-a}/T01.md` through `T40.md`.
 
-### 3단계: 프로바이더 B 실행
-1. Zoo Code에서 **프로바이더 B**(예: `openrouter-q4` 또는 `provider_fp4`)로 프로필을 교체합니다.
-2. 2단계와 동일한 방법(메가 배치 또는 개별 모드)으로 복사-붙여넣기를 수행하여 `responses/{provider-b}/`에 저장합니다.
-*(시간대, 시스템 부하 등 외부 변동을 최소화하기 위해 연속으로 진행하는 것을 권장합니다)*
+### Step 3: Running Provider B
+1. In Zoo Code, switch the profile to **Provider B** (e.g., `openrouter-q4` or `provider_fp4`).
+2. Execute prompt injection using the identical method (Mega-Batch or Individual) and save the responses to `responses/{provider-b}/`.
+*(Conducting runs in close succession is recommended to minimize temporal or server load variations).*
 
-### 4단계: 원클릭 자동 판정 및 대시보드 열람
-- **방법 1 (윈도우 탐색기 더블클릭 — 가장 빠르고 편리)**:
-  - 프로젝트 루트 또는 `flip-test-pack/` 디렉토리의 **`run_score.bat`를 더블클릭**합니다.
-  - Python 환경이 자동 감지되어 채점이 수행되고, **완료 즉시 기본 웹 브라우저에 시각적 대시보드(`report.html`)가 자동으로 열립니다.**
-- **방법 2 (터미널 CLI 수동 실행)**:
+### Step 4: 1-Click Automated Evaluation & Dashboard Inspection
+- **Method 1 (Windows Explorer Double-Click — Fastest & Most Convenient)**:
+  - Double-click **`run_score.bat`** in either the repository root or the `flip-test-pack/` directory.
+  - The Python runtime is detected automatically, scoring executes, and **the visual dashboard (`report.html`) opens immediately in your default web browser.**
+- **Method 2 (Terminal CLI Manual Execution)**:
   ```bash
-  # flip-test-pack 디렉토리 내부에서:
+  # Inside the flip-test-pack directory:
   python score_results.py
 
-  # 또는 프로젝트 루트에서:
+  # Or from the repository root:
   python flip-test-pack/score_results.py
   ```
-- **산출물**:
-  1. stdout 터미널: **카테고리 × 프로바이더 정확도 매트릭스** 및 **프로바이더 쌍별 차이(%p)** 즉시 출력
-  2. `report.html`: **인라인 SVG 막대 차트, 편차 발산 차트, 종합 카드, 실패 아코디언이 포함된 반응형 대시보드**
-  3. `results_summary.md`: 정밀 Markdown 요약 리포트 자동 저장
-  4. `failures.csv`: 오답/실패 체크 상세 기록 (100% 무결점 통과 시 자동 생략)
+- **Generated Artifacts**:
+  1. stdout terminal: Instant **Category × Provider Accuracy Matrix** and **Pairwise Provider Deltas (%p)**
+  2. `report.html`: **Responsive dashboard featuring inline SVG bar charts, diverging delta charts, summary cards, and failure detail accordions**
+  3. `results_summary.md`: Auto-generated Markdown summary report
+  4. `failures.csv`: Detailed log of failed checks (omitted automatically on 100% pass)
 
-### 5단계: 미세 차이 수렴 검증 (반복 실행)
-- 만약 두 프로바이더 간의 차이가 **0.5~2.0%p 수준의 미세한 편차(FP4 vs FP8급)**일 경우, 전수 반복 대신 **판별이 필요한 해당 프로바이더 쌍에 대해서만 3회 반복**을 수행합니다.
-- 메가 배치 모드 시 `MEGA.r2.md`, `MEGA.r3.md`, 개별 모드 시 `Txx.r2.md`, `Txx.r3.md` 파일 형식으로 추가한 뒤 아래 방법으로 판정합니다:
-  - **더블클릭**: **`run_score_runs.bat` 더블클릭**
+### Step 5: Fine-Grained Convergence Verification (Repeated Runs)
+- When the accuracy delta between two providers is subtle (**0.5%p to 2.0%p, typical of FP4 vs. FP8 differences**), perform **3 repeated runs on the specific provider pair** rather than exhaustive testing across all models.
+- Add multi-run files (`MEGA.r2.md`, `MEGA.r3.md` for Mega-Batch; `Txx.r2.md`, `Txx.r3.md` for Individual Mode) and run:
+  - **Double-click**: **`run_score_runs.bat`**
   - **CLI**: `python score_results.py --runs`
-- 회차 평균 정확도와 함께 **회차 간 출력 불일치율(Cross-Run Disagreement Rate)**이 시각화되어 확률적 노이즈인지 가중치 열화인지 판별할 수 있습니다.
+- This visualizes the run-average accuracy alongside the **Cross-Run Disagreement Rate**, helping discern whether deviations stem from stochastic sampling noise or systemic quantization weight degradation.
 
-### 6단계: 실험 기록
-- `run_manifest.md` 파일에 프로바이더 명칭, 모델 공식명, 양자화 표기, 실행 일시, Zoo Code 버전을 기록하여 재현성을 보증합니다.
+### Step 6: Experiment Documentation
+- Record provider names, official model IDs, quantization designations, run timestamps, and Zoo Code versions in `run_manifest.md` to ensure reproducibility.
 
 ---
 
-## 5. 통제 체크리스트 (Control Checklist)
+## 5. Control Checklist
 
-| 점검 항목 | 통제 기준 | 확인 |
+| Inspection Item | Control Standard | Verified |
 | :--- | :--- | :---: |
-| **프롬프트 주입** | T01부터 T40(또는 MEGA_BATCH)까지 단 한 번의 건너뜀 없이 동일한 순서로 주입 | [ ] |
-| **Custom Mode** | `test_cjk_flip` 모드 (Role: `Perform only the given task and provide no unnecessary explanations.`) 고정 | [ ] |
-| **도구 비활성화** | Zoo Code 내 모든 Tool/MCP/터미널/파일수정 사용 권한 전부 해제(`None`) 유지 | [ ] |
-| **단일 독립 변인** | 환경·모드 100% 동일 고정, 오직 프로바이더(Provider Profile / Quantization) 설정만 교체 | [ ] |
-| **Temperature** | 프로바이더 설정에서 temperature = 0.0 고정 (지원 시) | [ ] |
-| **환경 오염 격리** | 빈 작업 폴더 사용, 전역 룰 파일(`.cursorrules` 등) 및 메모리 간섭 부재 확인 | [ ] |
-| **마커 보존** | responses 파일 저장 시 ⟪ 와 ⟫ 마커가 온전히 보존되어 있는지 확인 | [ ] |
+| **Prompt Injection** | Injected from T01 to T40 (or MEGA_BATCH) in identical sequence without omissions | [ ] |
+| **Custom Mode** | `test_cjk_flip` mode active (Role: `Perform only the given task and provide no unnecessary explanations.`) | [ ] |
+| **Tool Permissions** | All Zoo Code Tool/MCP/Terminal/File-Edit permissions fully disabled (`None`) | [ ] |
+| **Single Independent Variable** | Environment and mode 100% identical; only Provider Profile / Quantization altered | [ ] |
+| **Temperature** | Fixed to `0.0` in provider profile (when supported) | [ ] |
+| **Environment Isolation** | Empty workspace used; no global rule files (`.cursorrules`, etc.) or memory interference | [ ] |
+| **Marker Preservation** | `⟪` and `⟫` markers preserved intact in response files | [ ] |
 
 ---
 
-## 6. 통계적 한계 및 해석 지침 (Statistical Limitations)
+## 6. Statistical Limitations & Interpretation Guidelines
 
-본 평가 팩을 해석할 때는 아래 통계적 한계를 반드시 고려해야 합니다:
+When interpreting results from this test pack, consider the following statistical boundaries:
 
-1. **단일 실행(1회차) 기준 표본 오차**:
-   - 본 테스트 팩은 총 298개의 독립적 check를 포함합니다. 이항 분포(Binomial Distribution) 95% 신뢰수준(CI) 하에서 1회 실행 시 표본 오차는 약 **±3.0%p ~ ±3.5%p**입니다.
-   - 따라서 **1회차 실행 결과는 대략적인 방향성(Directional Indicator) 확인용**으로만 해석해야 합니다.
-2. **FP4 vs FP8급(0.5~2.0%p) 미세 차이 판별**:
-   - 0.5%p ~ 2.0%p 내외의 미세한 성능 차이를 통계적으로 유의미하게 규명하려면, 해당 프로바이더 쌍에 대해 **최소 3회 반복(`--runs`)**을 수행하여 평균값 수렴과 회차 간 불일치율을 교차 검증해야 합니다.
-3. **통제 불가 잔존 요인 (하네스 산문 및 도구 어댑터 차이)**:
-   - 프로바이더에 따라 API 게이트웨이 단계에서 주입하는 숨겨진 시스템 래퍼(system wrapper), 토크나이저 직렬화 방식, 클라이언트 라이브러리 간의 미세한 버퍼링 차이는 외부에서 100% 통제할 수 없는 잔존 요인입니다.
-   - 따라서 이러한 편차는 결코 특정 모델의 절대적 우열로 해석해서는 안 되며, 반드시 **"시스템 차이(Systemic Differences)"**로 명명해야 합니다.
-
----
-
-## 7. 가정 (Assumptions)
-
-본 테스트 팩은 실용성과 과학적 엄밀성의 균형을 위해 다음과 같은 합리적 가정을 채택합니다:
-
-1. **마커 기반 추출 가설**:
-   - 모델이 주어진 지시를 준수하여 `⟪` 와 `⟫` (또는 `《 ... 》`) 사이에 답을 작성할 수 있다고 가정합니다.
-   - 마커가 누락된 경우, 엄격한 형식 준수 실패로 간주하여 형식 검사(exact, json_schema 등)에서 0점 처리됩니다.
-2. **유니코드 표준 정규화 가설**:
-   - 한중일 문자열의 전각/반각, 호환용 한자 자형의 차이는 NFKC 및 NFC 표준 정규화 파이프라인을 통해 전처리 후 판정하므로, 순수한 인코딩 규격 차이로 인한 억울한 감점은 배제된다고 가정합니다.
-3. **비(非) LLM 결정론적 판정 가설**:
-   - LLM-as-a-Judge는 자체적인 확률적 편향과 비용, 비재현성을 야기하므로, 본 채점기는 **100% 결정적 규칙(Exact, Regex, Numeric, Schema, Levenshtein, chrF)**만을 사용하여 판정합니다.
+1. **Single-Run Margin of Error**:
+   - This test pack comprises 298 independent checks. Under a 95% Confidence Interval (CI) of a Binomial Distribution, the sampling error margin for a single run is approximately **±3.0%p to ±3.5%p**.
+   - Consequently, **single-run results should be interpreted primarily as directional indicators**.
+2. **Discerning Fine-Grained Deltas (0.5–2.0%p for FP4 vs. FP8)**:
+   - To establish statistical significance for subtle performance differences between 0.5%p and 2.0%p, perform **at least 3 repeated runs (`--runs`)** on the target provider pair to verify mean convergence and cross-run disagreement rates.
+3. **Uncontrollable Residual Factors (Harness Prose & Adapter Differences)**:
+   - Differences in gateway-level system wrappers, tokenizer serialization nuances, or client-side stream buffering introduced by various API providers cannot be 100% controlled externally.
+   - Therefore, observed deltas must never be misconstrued as absolute intrinsic model superiority, but should strictly be designated as **"Systemic Differences under Identical Harness Conditions."**
 
 ---
 
-## 8. 채점 스크립트 CLI 옵션 안내
+## 7. Operational Assumptions
 
-`score_results.py`는 외부 패키지 설치(`pip install`)가 일절 필요 없는 순수 Python 3 표준 라이브러리 스크립트입니다.
+To balance practical utility with scientific rigor, this test pack adopts the following reasonable assumptions:
+
+1. **Marker-Based Extraction Hypothesis**:
+   - Assumes the model can comply with formatting instructions to enclose its answer between `⟪` and `⟫` (or `《 ... 》`).
+   - If markers are completely absent, it is treated as a strict formatting compliance failure, yielding 0 points on strict formatting checks (exact, json_schema, etc.).
+2. **Standard Unicode Normalization Hypothesis**:
+   - Variations in fullwidth/halfwidth forms and CJK compatibility ideographs are handled through NFKC and NFC normalization pipelines, ensuring scores are not unfairly penalized by pure encoding standard differences.
+3. **Non-LLM Deterministic Evaluation Hypothesis**:
+   - To prevent stochastic variance, evaluation costs, and non-reproducibility associated with LLM-as-a-Judge paradigms, this scorer relies **100% on deterministic rules (Exact, Regex, Numeric, Schema, Levenshtein, chrF)**.
+
+---
+
+## 8. Scorer CLI Options
+
+`score_results.py` is a standalone script utilizing solely the Python 3 standard library—no `pip install` required.
 
 ```bash
-# 기본 실행 (flip-test-pack 디렉토리 내에서)
+# Standard evaluation (executed inside flip-test-pack/)
 python score_results.py
 
-# 다회차 반복 분석 모드 (MEGA.r2.md 또는 Txx.r2.md 등 회차 파일이 있을 때)
+# Multi-run evaluation mode (when repeated run files such as MEGA.r2.md or Txx.r2.md exist)
 python score_results.py --runs
 
-# 커스텀 경로 및 HTML 대시보드 출력 경로 지정 실행
+# Run in Korean mode
+python score_results.py --lang ko
+
+# Custom file paths and HTML dashboard output specification
 python score_results.py --master checks_master.json --responses responses --output-summary results_summary.md --output-csv failures.csv --output-html report.html
 ```
 
-### 채점기 자체 검증 유닛 테스트 실행
+### Running Scorer Self-Verification Unit Tests
 ```bash
-# 56개 유닛 테스트 (메가 배치, 토큰 절단 진단, 공정성 회귀, HTML 대시보드 생성 전수 포함) 실행
+# Run all 56 unit tests (Mega-Batch, token truncation, fairness regression, HTML dashboard generation)
 python tests/test_scorer.py
 ```
-*(모든 테스트가 100% 통과(OK)되어야 키트의 무결성이 보증됩니다)*
-
+*(All 56 tests must pass (OK) to guarantee test kit integrity).*
