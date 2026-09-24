@@ -55,7 +55,7 @@ flip-test-pack/
 │   ├── sample_fp8/        # [Sample] Lossless FP8 reference response (MEGA.md + T01~T40.md, 100% pass)
 │   └── sample_fp4/        # [Sample] FP4-level quantization degradation response (MEGA.md + T01~T40.md, 97.23% pass)
 └── tests/
-    └── test_scorer.py     # Scorer self-verification test suite (56 tests covering Mega-Batch, truncation, fairness, HTML)
+    └── test_scorer.py     # Scorer self-verification test suite (58 tests covering Mega-Batch, truncation, fairness, HTML)
 ```
 
 ---
@@ -99,6 +99,15 @@ The answer keys in this test pack were not manually transcribed or intuited; the
 
 ## 4. Step-by-Step Execution Guide
 
+> [!TIP]
+> ### 🎯 Prompt File Location & Copy-Paste Quick Reference
+> *"Which file should I open and what exact prompt do I copy?"* — Choose either **Method 1 (Strongly Recommended)** or **Method 2** below:
+>
+> | Injection Mode | Source Prompt File to Open | What Exactly to Copy | Where to Save the Model's Output |
+> | :--- | :--- | :--- | :--- |
+> | **🌟 Method 1 (Strongly Recommended)<br>1-Click Mega-Batch** | **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)**<br>*(or `flip-test-pack/prompts/MEGA_BATCH.md`)* | **Select All (Ctrl+A, Ctrl+C)**<br>Entire file contains all 40 questions (T01~T40, 298 checks) | **[`responses/{provider}/MEGA.md`](responses/)**<br>*(single file containing full model response)* |
+> | **🔹 Method 2<br>Individual Question Mode** | **[`prompts/T01.md`](prompts/)** through **`T40.md`**<br>*(40 separate files in `prompts/`)* | Content inside the **`## 복붙용 프롬프트`** (`## Copy-Paste Prompt`) code block only | **[`responses/{provider}/T01.md`](responses/)** through **`T40.md`**<br>*(40 separate response files)* |
+
 ### Step 1: Controlled Environment Setup (Zoo Code Custom Mode)
 1. Create an empty folder and open it in VS Code (ensuring a clean workspace free from global instruction files like `.cursorrules`, `.windsurfrules`, or `.gemini/rules`).
 2. Open the Zoo Code extension and create a new Custom Mode:
@@ -110,19 +119,21 @@ The answer keys in this test pack were not manually transcribed or intuited; the
 4. **Single Independent Variable Isolation**: Maintain the exact same mode configuration, empty workspace, and prompt injection sequence across all runs, varying **only the backend provider configuration (Provider Profile / Quantization)**.
 
 ### Step 2: Running Provider A (Mega-Batch or Individual Mode)
-- **Method 1 (Recommended: 1-Click Copy-Paste Mega-Batch Mode)**:
-  1. In Zoo Code, select the `test_cjk_flip` mode and select the target provider (Provider A).
-  2. Copy the entire contents of `flip-test-pack/prompts/MEGA_BATCH.md` and paste it into the Zoo Code input box once.
-  3. Copy the model's full response containing `=== [T01] ===` through `=== [T40] ===` and save it as a single file:
-     `flip-test-pack/responses/{provider-a}/MEGA.md`
+- **Method 1 (Strongly Recommended: 1-Click Copy-Paste Mega-Batch Mode)**:
+  1. In Zoo Code, select the **`test_cjk_flip`** mode and set the target provider (Provider A).
+  2. Open **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)** (or `flip-test-pack/prompts/MEGA_BATCH.md`), copy the entire file contents (**Ctrl+A, Ctrl+C**), and paste it into the Zoo Code chat input box once.
+  3. Copy the model's complete output containing all 40 question blocks (`=== [T01] ===` through `=== [T40] ===`) and save it as a single file at:
+     **[`responses/{provider-a}/MEGA.md`](responses/)** (or `flip-test-pack/responses/{provider-a}/MEGA.md`).
 - **Method 2 (Traditional Individual Mode)**:
-  1. Verify `test_cjk_flip` mode is active in Zoo Code and target Provider A.
-  2. Copy and paste prompts `T01.md` through `T40.md` sequentially from `flip-test-pack/prompts/`.
-  3. Save each individual response to `flip-test-pack/responses/{provider-a}/T01.md` through `T40.md`.
+  1. Verify **`test_cjk_flip`** mode is active in Zoo Code and target Provider A.
+  2. Open each prompt file from **[`prompts/T01.md`](prompts/)** through **`T40.md`** sequentially, copy the text inside the **`## 복붙용 프롬프트`** (`## Copy-Paste Prompt`) code block, and paste it into Zoo Code.
+  3. Save each individual response to **[`responses/{provider-a}/T01.md`](responses/)** through **`T40.md`**.
 
 ### Step 3: Running Provider B
 1. In Zoo Code, switch the profile to **Provider B** (e.g., `openrouter-q4` or `provider_fp4`).
-2. Execute prompt injection using the identical method (Mega-Batch or Individual) and save the responses to `responses/{provider-b}/`.
+2. Execute prompt injection using the identical method:
+   - **Method 1 (Mega-Batch)**: Paste from **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)** and save full response to **[`responses/{provider-b}/MEGA.md`](responses/)**.
+   - **Method 2 (Individual)**: Paste from **[`prompts/T01.md`](prompts/)** ~ **`T40.md`** and save responses to **[`responses/{provider-b}/T01.md`](responses/)** ~ **`T40.md`**.
 *(Conducting runs in close succession is recommended to minimize temporal or server load variations).*
 
 ### Step 4: 1-Click Automated Evaluation & Dashboard Inspection
@@ -218,7 +229,7 @@ python score_results.py --master checks_master.json --responses responses --outp
 
 ### Running Scorer Self-Verification Unit Tests
 ```bash
-# Run all 56 unit tests (Mega-Batch, token truncation, fairness regression, HTML dashboard generation)
+# Run all 58 unit tests (Mega-Batch, token truncation, fairness regression, HTML dashboard generation)
 python tests/test_scorer.py
 ```
-*(All 56 tests must pass (OK) to guarantee test kit integrity).*
+*(All 58 tests must pass (OK) to guarantee test kit integrity).*

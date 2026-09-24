@@ -35,14 +35,44 @@ To ensure strictly identical harness conditions and uncontaminated single-variab
 
 ---
 
+## 📋 Which Prompts to Inject? (Prompt File Location & Copy Guide)
+
+> [!TIP]
+> ### 🎯 Exactly What to Copy & Where to Save
+> *"Which file do I open and what prompt do I copy?"* — Choose either **Method 1 (Strongly Recommended)** or **Method 2** below:
+
+### 🌟 Method 1 (Strongly Recommended): 1-Click "Mega-Batch" Prompt
+*Inject all 40 questions across all 8 categories (298 checks) in a single copy-paste operation!*
+
+| Step | Action | Exact File Path / Location |
+| :--- | :--- | :--- |
+| **1. Source File** | Open the unified mega-batch file | **[`flip-test-pack/prompts/MEGA_BATCH.md`](flip-test-pack/prompts/MEGA_BATCH.md)** |
+| **2. What to Copy** | Select all text (**Ctrl+A, Ctrl+C**) | Complete file contents (T01~T40, 298 checks) |
+| **3. Where to Paste** | Paste once into Zoo Code | Zoo Code chat box with **`test_cjk_flip`** mode active |
+| **4. Save Response** | Save model's entire raw output to | **[`flip-test-pack/responses/{provider}/MEGA.md`](flip-test-pack/responses/)** |
+
+---
+
+### 🔹 Method 2: Individual Question Mode (40 Sequential Prompts)
+*Inject questions individually one by one (useful for selective debugging or token-limited environments).*
+
+| Step | Action | Exact File Path / Location |
+| :--- | :--- | :--- |
+| **1. Source Files** | Open each question file sequentially | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/)** through **`T40.md`** (40 files) |
+| **2. What to Copy** | Copy only the inner prompt block | The content inside the **`## 복붙용 프롬프트`** (`## Copy-Paste Prompt`) code block |
+| **3. Where to Paste** | Paste into Zoo Code one by one | Zoo Code chat box with **`test_cjk_flip`** mode active |
+| **4. Save Response** | Save each response separately to | **[`flip-test-pack/responses/{provider}/T01.md`](flip-test-pack/responses/)** ~ **`T40.md`** |
+
+---
+
 ## 🚀 1-Click "Mega-Batch" Workflow
 
 To eliminate the operational fatigue of copying and pasting 40 separate prompts, a single-injection Mega-Batch format is fully supported:
 
-1. In Zoo Code, select the `test_cjk_flip` mode and set the target provider.
-2. Copy the entire contents of `flip-test-pack/prompts/MEGA_BATCH.md` and paste it into the Zoo Code input box once.
-3. Save the model's complete output containing all 40 questions into a single file at `flip-test-pack/responses/{provider}/MEGA.md`.
-4. Double-click `run_score.bat`. The scorer automatically detects the Mega-Batch format, parses each item deterministically, and issues diagnostic warnings if token truncation occurs.
+1. In Zoo Code, select the **`test_cjk_flip`** mode and set the target provider profile.
+2. Open **[`flip-test-pack/prompts/MEGA_BATCH.md`](flip-test-pack/prompts/MEGA_BATCH.md)**, copy its entire contents (**Ctrl+A, Ctrl+C**), and paste it into the Zoo Code input box once.
+3. Save the model's complete output containing all 40 questions into a single file at **[`flip-test-pack/responses/{provider}/MEGA.md`](flip-test-pack/responses/)**.
+4. Double-click **`run_score.bat`**. The scorer automatically detects the Mega-Batch format, parses each item deterministically, and issues diagnostic warnings if token truncation occurs.
 
 ---
 
@@ -66,7 +96,7 @@ Without relying on heavy external dependencies (such as matplotlib, npm, or char
 # Navigate to the flip-test-pack directory
 cd flip-test-pack
 
-# Run scorer self-verification unit tests (all 56 pass)
+# Run scorer self-verification unit tests (all 58 pass)
 python tests/test_scorer.py
 
 # Single-run evaluation and dashboard generation
