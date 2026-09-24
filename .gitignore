@@ -36,6 +36,6 @@ docs/
 /NW_Kimi_K3_Max/
 
 # Runtime generated evaluation artifacts
-/report.html
-/results_summary.md
+report.html
+results_summary.md
 failures.csv

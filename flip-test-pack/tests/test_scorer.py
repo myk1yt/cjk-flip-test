@@ -12,8 +12,10 @@ Verifies:
 """
 
 import sys
+import io
 import json
 import shutil
+import contextlib
 import tempfile
 import unittest
 from pathlib import Path
@@ -469,7 +471,7 @@ class TestIntentionalErrorSamples(unittest.TestCase):
         chk = {"id": "C_STRICT", "type": "exact", "expected": "정답", "points": 1}
         ok, pts, msg = sr.evaluate_check(chk, "정답", marker_found=False)
         self.assertFalse(ok)
-        self.assertIn("Marker ⟪ ⟫ missing", msg)
+        self.assertIn("marker missing", msg)
 
     def test_levenshtein0_intentional_flaw(self):
         chk = {"id": "C_LEV", "type": "levenshtein0", "expected": "정확한문자열", "max_dist": 0, "points": 1}
@@ -762,7 +764,7 @@ class TestMegaBatchAndDashboard(unittest.TestCase):
         # HTML content assertions
         self.assertIn("<!DOCTYPE html>", html_content)
         self.assertIn("Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드", html_content)
-        self.assertIn("Category Accuracy Matrix", html_content)
+        self.assertIn("카테고리별 정확도 그룹 차트", html_content)
         self.assertIn("<svg viewBox=", html_content)
         self.assertIn("toggleTheme", html_content)
         self.assertIn("100.00", html_content)
@@ -867,6 +869,248 @@ class TestMegaBatchAndDashboard(unittest.TestCase):
         
         # Verify run disagreement rate is greater than 0
         self.assertGreater(results["run_disagreements"]["provider_zero_trunc"], 0.0)
+
+
+class TestFairnessRegression(unittest.TestCase):
+    """
+    Regression locks for the 2026-09-24 scorer fairness audit fixes.
+    Covers the relaxed answer keys in checks_master.json and the engine
+    hardening in score_results.py, so none of the unfairness channels
+    can silently come back.
+    """
+
+    MODIFIED_CHECK_IDS = [
+        ("T01", "T01_C2"), ("T01", "T01_C3"),
+        ("T02", "T02_C3"), ("T02", "T02_C4"), ("T02", "T02_C5"),
+        ("T03", "T03_C2"),
+        ("T05", "T05_C2"), ("T05", "T05_C4"),
+        ("T37", "T37_C5"),
+        ("T38", "T38_C1"), ("T38", "T38_C2"), ("T38", "T38_C3"), ("T38", "T38_C4"),
+    ]
+
+    def setUp(self):
+        self.temp_dir = tempfile.mkdtemp()
+        self.responses_dir = Path(self.temp_dir) / "responses"
+        self.master = sr.load_master_checks(PACK_DIR / "checks_master.json")
+
+    def tearDown(self):
+        shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+    def get_check(self, pid, cid):
+        return next(c for c in self.master["prompts"][pid]["checks"] if c["id"] == cid)
+
+    def assert_check_passes(self, pid, cid, text):
+        chk = self.get_check(pid, cid)
+        ok, _, msg = sr.evaluate_check(chk, text, marker_found=True)
+        self.assertTrue(ok, f"{cid} should pass for {text!r}: {msg}")
+
+    def assert_check_fails(self, pid, cid, text):
+        chk = self.get_check(pid, cid)
+        ok, _, msg = sr.evaluate_check(chk, text, marker_found=True)
+        self.assertFalse(ok, f"{cid} should fail for {text!r}, but passed: {msg}")
+
+    def test_relaxed_key_t01_korean_particles(self):
+        # T01_C2: inserted Korean particles must not fail a correct answer
+        self.assert_check_passes("T01", "T01_C2", "신청서는 첨부 서류 미비")
+        self.assert_check_passes("T01", "T01_C2", "신청서 첨부 서류가 미비")
+        # Antonym (완비) is still a wrong answer
+        self.assert_check_fails("T01", "T01_C2", "신청서는 첨부 서류 완비")
+
+        # T01_C3: particles optional for '각하 처분 통지'
+        self.assert_check_passes("T01", "T01_C3", "각하 처분을 통지")
+        self.assert_check_passes("T01", "T01_C3", "각하 처분 통지")
+        # Mis-translation '기각 처분' must still fail
+        self.assert_check_fails("T01", "T01_C3", "기각 처분을 통지")
+
+    def test_relaxed_key_t02_admin_term_and_place_gloss(self):
+        # T02_C3: 手續 may legitimately surface as 절차 or 수속
+        self.assert_check_passes("T02", "T02_C3", "행정 수속 간소화")
+        self.assert_check_passes("T02", "T02_C3", "행정 절차 간소화")
+
+        # T02_C4: parenthesized gloss (동경도) and comma may sit between 도쿄도 and 가스미가세키
+        self.assert_check_passes("T02", "T02_C4", "도쿄도(동경도), 가스미가세키")
+        self.assert_check_passes("T02", "T02_C4", "도쿄도 가스미가세키")
+
+    def test_relaxed_key_t02_c5_optional_translation_label(self):
+        # Label/colon after "2." is optional; bare translation line must pass
+        self.assert_check_passes("T02", "T02_C5", "2. 도쿄도 지요다구에 위치한 건축물")
+        self.assert_check_passes("T02", "T02_C5", "2. 완역: 이 문장은 완역된 문장입니다")
+        self.assert_check_passes("T02", "T02_C5", "2. 한국어 번역: 도쿄도 지요다구에 위치한 건축물")
+        # A line with no Korean content at all is not a Korean translation
+        self.assert_check_fails("T02", "T02_C5", "2. 東京都千代田区に所在")
+
+    def test_relaxed_key_t03_investment_term(self):
+        # 外商投资 may legitimately surface as 외국인투자 or 외상투자
+        self.assert_check_passes("T03", "T03_C2", "외상투자 환경이 개선되었다")
+        self.assert_check_passes("T03", "T03_C2", "외국인투자 환경이 개선되었다")
+
+    def test_relaxed_key_t05_lover_and_idiom_variants(self):
+        # T05_C2: 愛人 in a letter context is 배우자 or 연인
+        self.assert_check_passes("T05", "T05_C2", "편지에서 그는 자신의 연인을 그리워했다")
+        self.assert_check_passes("T05", "T05_C2", "편지에서 그는 자신의 배우자를 그리워했다")
+
+        # T05_C4: 做工夫 idiom may use any effort-collocation, but transliteration 쿵푸 fails
+        self.assert_check_passes("T05", "T05_C4", "그 일에 정성을 들여 완성했다")
+        self.assert_check_passes("T05", "T05_C4", "공부에 공을 들인 결과")
+        self.assert_check_fails("T05", "T05_C4", "그는 쿵푸를 부리는 사람이다")
+
+    def test_relaxed_key_t37_c5_final_result_extract_spacing(self):
+        # extract_regex must tolerate a space inside the "최종 결과" label
+        self.assert_check_passes("T37", "T37_C5", "5. 최종 결과: 222")
+        self.assert_check_passes("T37", "T37_C5", "5. 최종결과: 222")
+        # Wrong final value still fails
+        self.assert_check_fails("T37", "T37_C5", "5. 최종 결과: 221")
+
+    def test_t38_coordinate_digit_boundaries(self):
+        # Single-digit coordinates with or without brackets pass
+        self.assert_check_passes("T38", "T38_C1", "1. 1단계좌표: (1,3)")
+        self.assert_check_passes("T38", "T38_C1", "1. 1단계좌표: [1, 3]")
+        self.assert_check_passes("T38", "T38_C3", "3. 3단계좌표: (5,5)")
+        self.assert_check_passes("T38", "T38_C4", "4. 4단계좌표: [5, 3]")
+        # Multi-digit coordinates must NOT leak-match single-digit substrings
+        self.assert_check_fails("T38", "T38_C1", "1. 1단계좌표: (11, 33)")
+        self.assert_check_fails("T38", "T38_C1", "좌표 21,39에서 멈췄다")
+        self.assert_check_fails("T38", "T38_C3", "3. 3단계좌표: (15, 35)")
+        self.assert_check_fails("T38", "T38_C4", "4. 4단계좌표: [15, 33]")
+
+    def test_modified_checks_carry_rationale(self):
+        # Every check touched by the fairness audit must document why (Korean rationale field)
+        for pid, cid in self.MODIFIED_CHECK_IDS:
+            chk = self.get_check(pid, cid)
+            self.assertIn("rationale", chk, f"{cid} is missing its audit rationale")
+            self.assertTrue(chk["rationale"].strip(), f"{cid} has an empty rationale")
+
+    def test_ignore_punctuation_strips_cjk_punctuation(self):
+        raw = "안녕、세상。중심「관점」『참고』【보충】〜만점！"
+        self.assertEqual(sr.normalize_text(raw, "ignore_punctuation"), "안녕세상중심관점참고보충만점")
+        # ASCII punctuation is still stripped alongside CJK punctuation
+        mixed = "Hello, World! (test) [안녕]、세상。"
+        self.assertEqual(sr.normalize_text(mixed, "ignore_punctuation"), "HelloWorldtest안녕세상")
+
+    def test_marker_gate_fails_all_check_types_without_marker(self):
+        schema = {"type": "object", "required": ["a"], "properties": {"a": {"type": "number"}}}
+        cases = [
+            ("exact",       {"id": "G1", "type": "exact", "expected": "정답", "points": 1}, "정답"),
+            ("contains",    {"id": "G2", "type": "contains", "expected": "정답", "points": 1}, "정답 포함"),
+            ("regex",       {"id": "G3", "type": "regex", "expected": r"정답\d+", "points": 1}, "정답42"),
+            ("char_count",  {"id": "G4", "type": "char_count", "expected": 5, "tolerance": 0, "points": 1}, "정답입니다"),
+            ("numeric",     {"id": "G5", "type": "numeric", "expected": 42.0, "epsilon": 0.0, "points": 1}, "값: 42"),
+            ("json_schema", {"id": "G6", "type": "json_schema", "expected": json.dumps(schema), "points": 1}, '{"a": 1}'),
+            ("levenshtein0", {"id": "G7", "type": "levenshtein0", "expected": "정답", "max_dist": 0, "points": 1}, "정답"),
+            ("chrf",        {"id": "G8", "type": "chrf", "expected": "정확한 문장", "threshold": 0.9, "points": 1}, "정확한 문장"),
+        ]
+        for name, chk, text in cases:
+            ok_on, _, _ = sr.evaluate_check(chk, text, marker_found=True)
+            self.assertTrue(ok_on, f"{name} check should pass with marker present")
+            ok_off, pts_off, msg_off = sr.evaluate_check(chk, text, marker_found=False)
+            self.assertFalse(ok_off, f"{name} check must fail when marker is missing")
+            self.assertEqual(pts_off, 0.0, f"{name} check awarded points without marker")
+            self.assertIn("marker missing", msg_off, f"{name} miss reason must mention the marker")
+
+    def test_marker_fallback_single_vs_multiple_pairs(self):
+        # Exactly one 《》/⟨⟩ pair is a legitimate fallback marker
+        content, found = sr.extract_marker_content("앞 《 핵심 결과 내용 》 뒤")
+        self.assertTrue(found)
+        self.assertEqual(content, "핵심 결과 내용")
+        content2, found2, source2 = sr.extract_marker_content_detailed("앞 ⟨ 단일 결과 ⟩ 뒤")
+        self.assertTrue(found2)
+        self.assertEqual(content2, "단일 결과")
+        self.assertEqual(source2, "fallback")
+
+        # Multiple pairs are prose citations (e.g. 《論語》 인용), NOT an answer marker
+        _, found3, source3 = sr.extract_marker_content_detailed("《論語》를 인용하고 《논어》를 설명함")
+        self.assertFalse(found3)
+        self.assertEqual(source3, "none")
+
+    def test_parse_mega_batch_inbody_reference_not_a_header(self):
+        # An in-body line like "- [T03] 문항과 동일한 규칙" must not split T02 or swallow T03
+        mega_text = (
+            "=== [T01] ===\n"
+            "⟪\n정답 1\n⟫\n\n"
+            "=== [T02] ===\n"
+            "본문 설명\n"
+            "- [T03] 문항과 동일한 규칙 적용\n"
+            "* [T04] 참고\n"
+            "⟪\n정답 2\n⟫\n\n"
+            "=== [T03] ===\n"
+            "⟪\n정답 3\n⟫\n\n"
+            "=== [T04] ===\n"
+            "⟪\n정답 4\n⟫\n"
+        )
+        with contextlib.redirect_stderr(io.StringIO()):
+            parsed = sr.parse_mega_batch(mega_text, source_name="inbody_test")
+        self.assertIn("- [T03] 문항과 동일한 규칙 적용", parsed["T02"])
+        self.assertIn("* [T04] 참고", parsed["T02"])
+        self.assertEqual(parsed["T03"], "⟪\n정답 3\n⟫")
+        self.assertEqual(parsed["T04"], "⟪\n정답 4\n⟫")
+
+    def test_parse_mega_batch_header_count_warning(self):
+        # 39 headers (one missing) must trigger the stderr count warning instead of silent proceed
+        lines = [f"=== [T{i:02d}] ===\n⟪\n본문 {i}\n⟫" for i in range(1, 40)]
+        stderr_buf = io.StringIO()
+        with contextlib.redirect_stderr(stderr_buf):
+            parsed = sr.parse_mega_batch("\n\n".join(lines), source_name="warn_test")
+        self.assertEqual(len(parsed), 39)
+        self.assertIn("[WARNING]", stderr_buf.getvalue())
+        self.assertIn("warn_test", stderr_buf.getvalue())
+
+    def test_write_failures_csv_removes_stale_file(self):
+        csv_path = Path(self.temp_dir) / "failures.csv"
+        csv_path.write_text("stale,header\n1,2\n", encoding="utf-8")
+        self.assertTrue(csv_path.exists())
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            sr.write_failures_csv([], csv_path)
+        self.assertFalse(csv_path.exists(), "stale failures.csv must be deleted on zero failures")
+
+        # Non-empty failures still write the CSV with the full header
+        row = {
+            "provider": "p", "run": "r1", "prompt_id": "T01", "category": "F1",
+            "check_id": "T01_C1", "check_type": "exact", "expected": "x",
+            "actual": "y", "passed": False, "points": 0.0, "reason": "z",
+        }
+        sr.write_failures_csv([row], csv_path)
+        self.assertTrue(csv_path.exists())
+        self.assertIn("check_id", csv_path.read_text(encoding="utf-8-sig").splitlines()[0])
+
+    def test_runs_mode_avg_points_matches_mean_accuracy(self):
+        # Minimal 2-prompt master: r1 perfect, r2 half-wrong -> accuracy 100/50, avg 75
+        mini_master = {
+            "categories": ["F1_테스트", "F2_테스트"],
+            "prompts": {
+                "T01": {
+                    "category": "F1_테스트",
+                    "expected_marker_content": "정답: A",
+                    "checks": [{"id": "T01_C1", "type": "exact", "expected": "정답: A", "norm": "none", "points": 2}],
+                },
+                "T02": {
+                    "category": "F2_테스트",
+                    "expected_marker_content": "정답: B",
+                    "checks": [{"id": "T02_C1", "type": "contains", "expected": "B", "norm": "ignore_whitespace", "points": 2}],
+                },
+            },
+        }
+        master_path = Path(self.temp_dir) / "mini_master.json"
+        master_path.write_text(json.dumps(mini_master, ensure_ascii=False), encoding="utf-8")
+
+        p_dir = self.responses_dir / "mini_prov"
+        p_dir.mkdir(parents=True)
+        (p_dir / "T01.r1.md").write_text("⟪\n정답: A\n⟫", encoding="utf-8")
+        (p_dir / "T02.r1.md").write_text("⟪\n정답: B\n⟫", encoding="utf-8")
+        (p_dir / "T01.r2.md").write_text("⟪\n정답: X\n⟫", encoding="utf-8")
+        (p_dir / "T02.r2.md").write_text("⟪\n정답: B\n⟫", encoding="utf-8")
+
+        results = sr.run_scoring(master_path, self.responses_dir, is_runs_mode=True)
+        sc = results["provider_scores"]["mini_prov"]
+        r1 = results["provider_runs"]["mini_prov"]["r1"]
+        r2 = results["provider_runs"]["mini_prov"]["r2"]
+
+        self.assertAlmostEqual(r1["accuracy"], 100.0, places=6)
+        self.assertAlmostEqual(r2["accuracy"], 50.0, places=6)
+        self.assertAlmostEqual(sc["accuracy"], 75.0, places=6)
+        # avg_points is the run-average of earned points and stays consistent with avg accuracy
+        self.assertAlmostEqual(sc["avg_points"], (r1["total_points"] + r2["total_points"]) / 2.0, places=6)
+        self.assertAlmostEqual(sc["avg_points"] / sc["max_points"] * 100.0, sc["accuracy"], places=6)
 
 
 if __name__ == "__main__":

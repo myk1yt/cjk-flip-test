@@ -65,8 +65,8 @@ def normalize_text(s: str, option: str = "none") -> str:
     elif option == "ignore_whitespace":
         return re.sub(r"\s+", "", s)
     elif option == "ignore_punctuation":
-        # Remove ASCII and CJK punctuation
-        s_no_punct = re.sub(r"[\s\.,\/#!$%\^&\*;:{}=\-_`~()\[\]<>《》⟪⟫'\"?+]+", "", s)
+        # Strip ASCII + CJK punctuation (、。 「」 『』 【】 〖〗 ・ ー ～ … — ‥ ･ ﹁ ﹂ etc.)
+        s_no_punct = re.sub(r"[\s\.,\/#!$%\^&\*;:{}=\-_`~()\[\]<>《》⟪⟫'\"?+、。・･ー‐‑‒–―—…‥「」『』【】〖〗﹁﹂﹃﹄〈〉⟨⟩〜]+", "", s)
         return s_no_punct
     elif option == "case_fold":
         return s.strip().lower()
@@ -77,20 +77,15 @@ def normalize_text(s: str, option: str = "none") -> str:
         return "\n".join(lines)
     return s.strip()
 
-def extract_marker_content(text: str) -> Tuple[str, bool]:
+def extract_marker_content_detailed(text: str) -> Tuple[str, bool, str]:
     """
-    Extract content strictly enclosed between ⟪ and ⟫ markers.
-    Handles:
-    - Primary markers ⟪ ... ⟫ (U+27EA / U+27EB)
-    - Fullwidth CJK angle brackets 《 ... 》 (U+300A / U+300B)
-    - Mathematical angle brackets ⟨ ... ⟩ (U+27E8 / U+27E9)
-    - Echoed prompt template filtration (skipping '[이곳에 답변 작성]')
-    - Truncated unclosed opening marker ⟪ recovery
-    - Stripping code fences inside marker
-    Returns (extracted_content, marker_found_flag).
+    Like extract_marker_content but also reports the marker source:
+    Returns (extracted_content, marker_found_flag, marker_source) where marker_source is
+    one of "primary" (⟪...⟫), "unclosed" (truncated ⟪ at EOF), "fallback" (《》/⟨⟩ pair),
+    or "none" (no usable marker; content is the raw text).
     """
     if not text:
-        return "", False
+        return "", False, "none"
 
     placeholders = {
         "[이곳에 답변 작성]",
@@ -112,7 +107,7 @@ def extract_marker_content(text: str) -> Tuple[str, bool]:
     if matches1:
         valid = [m for m in matches1 if m.strip() not in placeholders]
         if valid:
-            return clean_match(valid[-1]), True
+            return clean_match(valid[-1]), True, "primary"
 
     # 2. Check for unclosed opening marker ⟪ (e.g. truncated response at EOF)
     if "⟪" in text:
@@ -120,26 +115,39 @@ def extract_marker_content(text: str) -> Tuple[str, bool]:
         tail = text[idx + 1:].strip()
         tail = re.sub(r"⟫.*$", "", tail, flags=re.DOTALL).strip()
         if tail and tail not in placeholders:
-            return clean_match(tail), True
+            return clean_match(tail), True, "unclosed"
 
-    # 3. Fallback: Fullwidth angle brackets 《 ... 》
+    # 3. Fallback: fullwidth 《...》 / mathematical ⟨...⟩ pairs.
+    #    Used ONLY when exactly ONE valid pair exists in the whole text;
+    #    multiple pairs mean prose citations (e.g. "《論語》를 인용"), not an answer marker.
     pattern2 = re.compile(r"《([\s\S]*?)》")
-    matches2 = pattern2.findall(text)
-    if matches2:
-        valid = [m for m in matches2 if m.strip() not in placeholders]
-        if valid:
-            return clean_match(valid[-1]), True
-
-    # 4. Fallback: Single angle brackets ⟨ ... ⟩
     pattern3 = re.compile(r"⟨([\s\S]*?)⟩")
-    matches3 = pattern3.findall(text)
-    if matches3:
-        valid = [m for m in matches3 if m.strip() not in placeholders]
-        if valid:
-            return clean_match(valid[-1]), True
+    fallback_valid = (
+        [m for m in pattern2.findall(text) if m.strip() and m.strip() not in placeholders]
+        + [m for m in pattern3.findall(text) if m.strip() and m.strip() not in placeholders]
+    )
+    if len(fallback_valid) == 1:
+        return clean_match(fallback_valid[0]), True, "fallback"
 
-    # Marker missing
-    return clean_match(text), False
+    # Marker missing (zero or multiple fallback pairs)
+    return clean_match(text), False, "none"
+
+
+def extract_marker_content(text: str) -> Tuple[str, bool]:
+    """
+    Extract content strictly enclosed between ⟪ and ⟫ markers.
+    Handles:
+    - Primary markers ⟪ ... ⟫ (U+27EA / U+27EB)
+    - Fullwidth CJK angle brackets 《 ... 》 (U+300A / U+300B)
+    - Mathematical angle brackets ⟨ ... ⟩ (U+27E8 / U+27E9)
+    - Echoed prompt template filtration (skipping '[이곳에 답변 작성]')
+    - Truncated unclosed opening marker ⟪ recovery
+    - Stripping code fences inside marker
+    Fallback brackets are trusted only when exactly ONE pair exists in the text.
+    Returns (extracted_content, marker_found_flag).
+    """
+    content, found, _ = extract_marker_content_detailed(text)
+    return content, found
 
 def levenshtein_distance(s1: str, s2: str) -> int:
     """Compute standard Levenshtein distance."""
@@ -255,9 +263,10 @@ def evaluate_check(check: dict, actual_raw: str, marker_found: bool) -> Tuple[bo
     points = float(check.get("points", 1))
     expected = check.get("expected")
     
-    # Format-sensitive checks that fail immediately if marker missing
-    if not marker_found and chk_type in ("exact", "json_schema"):
-        return False, 0.0, "Marker ⟪ ⟫ missing from output"
+    # Marker gate: ALL check types require the ⟪ ⟫ answer marker.
+    # No full-text fallback credit for format-ignoring outputs (F8 fairness).
+    if not marker_found:
+        return False, 0.0, "마커 누락 (marker missing): ⟪ ⟫ 출력 없음"
 
     # Support extract_regex across all check types
     target_raw = actual_raw
@@ -273,15 +282,20 @@ def evaluate_check(check: dict, actual_raw: str, marker_found: bool) -> Tuple[bo
     if chk_type == "exact":
         if "char_index" in check:
             idx = int(check["char_index"])
-            clean_actual = normalize_unicode(re.sub(r"\s+", "", target_raw))
+            raw_no_ws = re.sub(r"\s+", "", target_raw)
+            clean_actual = normalize_unicode(raw_no_ws)
+            # M-4 diagnostic: NFKC normalization must not silently shift char_index positions
+            nfkc_note = ""
+            if len(clean_actual) != len(raw_no_ws):
+                nfkc_note = f" [진단: NFKC 정규화로 길이 {len(raw_no_ws)}→{len(clean_actual)} 변경]"
             norm_expected = normalize_unicode(normalize_text(str(expected), norm_opt))
             if 0 <= idx < len(clean_actual):
                 actual_char = clean_actual[idx]
                 passed = (actual_char == norm_expected)
-                msg = f"Char index {idx} ('{actual_char}' == '{norm_expected}')" if passed else f"Char index {idx} mismatch: expected '{norm_expected}', got '{actual_char}'"
+                msg = f"Char index {idx} ('{actual_char}' == '{norm_expected}')" if passed else f"Char index {idx} mismatch: expected '{norm_expected}', got '{actual_char}'{nfkc_note}"
                 return passed, (points if passed else 0.0), msg
             else:
-                return False, 0.0, f"Output length {len(clean_actual)} too short for index {idx}"
+                return False, 0.0, f"Output length {len(clean_actual)} too short for index {idx}{nfkc_note}"
         else:
             norm_expected = normalize_text(str(expected), norm_opt)
             passed = (norm_actual == norm_expected)
@@ -404,30 +418,32 @@ def load_master_checks(master_path: Path) -> dict:
     with open(master_path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-def parse_mega_batch(text: str) -> Dict[str, str]:
+def parse_mega_batch(text: str, source_name: str = "") -> Dict[str, str]:
     """
     Parses a single MEGA.md content containing multiple prompts (T01~T40).
-    Expected delimiter: === [Txx] ===
-    Also tolerates variations like === Txx ===, ## [Txx], === [Txx] (Category) ===,
-    markdown bold (**=== [T01] ===**), single digit T1~T9, etc.
+    Headers are matched ONLY at line start with an explicit banner/heading opener,
+    e.g. === [Txx] === (also tolerates ===[Txx]===, === Txx ===, --- [Txx] ---,
+    ## [Txx], ### **[Txx]** (카테고리), markdown bold wrap, single digit T1~T9).
+    In-body references like "- [T03] 문항과 동일" are never treated as headers.
+    A monotonic guard drops regressive duplicate banners, and a warning is printed
+    to stderr when the parsed question count != 40 instead of silently proceeding.
     Returns dict mapping prompt_id (e.g. 'T01') to raw response snippet.
     """
     if not text:
         return {}
-        
+
+    # Banner shape: opener (=== / --- / ##) + T-id + optional closer, header line only.
     pattern = re.compile(
         r"(?:^|\r?\n)[ \t]*(?:"
-        r"(?:[#=\-\*`~ \t]*\[[ \t]*T0*(40|[1-3]\d|[1-9])[ \t]*\][#=\-\*`~ \t]*)"
+        r"(?:\*{0,2}[ \t]*(?:={2,}|-{2,})[ \t]*\[?[ \t]*T0*(40|[1-3]\d|[1-9])\b[ \t]*\]?(?:[ \t]+[^=\-\r\n]*?)?[ \t]*(?:={2,}|-{2,})?[ \t]*\*{0,2}[ \t]*)"
         r"|"
-        r"(?:(?:={2,}|#{1,6}|-{2,})[ \t]*\bT0*(40|[1-3]\d|[1-9])\b(?:[ \t]*(?:={2,}|#{1,6}|-{2,}))?)"
-        r")[^\r\n]*(?:\r?\n|$)",
+        r"(?:#{1,6}[ \t]*\*{0,2}[ \t]*\[?[ \t]*T0*(40|[1-3]\d|[1-9])\b[ \t]*\]?(?:[ \t]*\*{0,2})?[ \t]*[^\r\n]*?)"
+        r")(?:\r?\n|$)",
         re.IGNORECASE
     )
-    
+
     matches = list(pattern.finditer(text))
-    if not matches:
-        return {}
-        
+
     valid_matches = []
     last_num = 0
     for match in matches:
@@ -443,7 +459,15 @@ def parse_mega_batch(text: str) -> Dict[str, str]:
         end = valid_matches[i + 1][1].start() if i + 1 < len(valid_matches) else len(text)
         item_text = text[start:end].strip()
         parsed[pid] = item_text
-        
+
+    if len(parsed) != 40:
+        src = f" ({source_name})" if source_name else ""
+        print(
+            f"[WARNING] MEGA 파싱{src}: 배너 {len(matches)}개, 고유 문항 {len(parsed)}개 "
+            f"(기대 40개). 본문/헤더 错位 가능성을 확인하세요: {sorted(parsed.keys())}",
+            file=sys.stderr
+        )
+
     return parsed
 
 def discover_responses(responses_dir: Path, is_runs_mode: bool = False, return_modes: bool = False):
@@ -474,15 +498,20 @@ def discover_responses(responses_dir: Path, is_runs_mode: bool = False, return_m
             provider_modes[provider] = "mega"
             for file in mega_files:
                 parts = file.stem.split(".")
-                if len(parts) > 1 and parts[1].lower().startswith("r"):
+                if len(parts) > 1 and parts[1].lower() in ("r1", "r2", "r3"):
                     run_id = parts[1].lower()
-                elif "_" in file.stem and file.stem.split("_")[1].lower().startswith("r"):
+                elif "_" in file.stem and file.stem.split("_")[1].lower() in ("r1", "r2", "r3"):
                     run_id = file.stem.split("_")[1].lower()
-                else:
+                elif file.stem.lower() == "mega":
+                    # Bare MEGA.md is the canonical first run slot
                     run_id = "r1"
-                    
+                else:
+                    # Non-run MEGA file (e.g. MEGA_part2.md): single-mode content stored
+                    # in its own slot so it never clobbers the real r1 slot.
+                    run_id = "single"
+
                 content = file.read_text(encoding="utf-8")
-                parsed_prompts = parse_mega_batch(content)
+                parsed_prompts = parse_mega_batch(content, source_name=f"{provider}/{file.name}")
                 for pid, snippet in parsed_prompts.items():
                     if pid not in data[provider]:
                         data[provider][pid] = {}
@@ -538,10 +567,11 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
         results["provider_runs"][provider] = {}
         
         # Target runs to evaluate:
-        # If is_runs_mode: evaluate all runs
-        # If single-run mode: evaluate 'r1' if present, otherwise fallback to the first available run
+        # If is_runs_mode: evaluate only r1/r2/r3 run slots ("single" slot excluded)
+        # If single-run mode: evaluate 'r1' if present, otherwise the first available slot
         if is_runs_mode:
-            target_runs = all_runs
+            run_slots = [r for r in all_runs if r in ("r1", "r2", "r3")]
+            target_runs = run_slots if run_slots else all_runs
         else:
             target_runs = ["r1"] if "r1" in all_runs else all_runs[:1]
             
@@ -565,6 +595,7 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                     }
         
         run_scores_list = []
+        run_earned_list = []
         cat_scores_per_run = {cat: [] for cat in categories}
         run_extracted_contents = {pid: [] for pid in prompts_meta.keys()}
         
@@ -583,8 +614,8 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                 checks = p_info["checks"]
                 runs_dict = p_data.get(pid, {})
                 
-                # In runs mode, do not fallback to r1 to avoid duplicate responses and distorted disagreement stats
-                raw_resp = runs_dict.get(run_id, "") if is_runs_mode else runs_dict.get(run_id, runs_dict.get("r1", ""))
+                # No r1 backfill in any mode: a missing run scores as empty
+                raw_resp = runs_dict.get(run_id, "")
                 
                 if not raw_resp:
                     run_extracted_contents[pid].append("")
@@ -611,7 +642,7 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                         })
                     continue
                     
-                content, marker_found = extract_marker_content(raw_resp)
+                content, marker_found, marker_source = extract_marker_content_detailed(raw_resp)
                 run_extracted_contents[pid].append(content)
                 
                 for chk in checks:
@@ -629,6 +660,9 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                         run_category_scores[cat]["points"] += awarded
                         run_category_scores[cat]["passed"] += 1
                     else:
+                        # M-2: note in the miss reason when the answer came from a 《》/⟨⟩ fallback marker
+                        if marker_source == "fallback":
+                            reason = f"폴드백 마커 사용 (《》/⟨⟩): {reason}"
                         results["failures"].append({
                             "provider": provider,
                             "run": run_id,
@@ -657,9 +691,12 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                 "category_scores": run_category_scores
             }
             run_scores_list.append(run_acc)
+            run_earned_list.append(run_total_points)
 
         # Compute summary scores (Single-run or Multi-run Average)
         mean_acc = sum(run_scores_list) / len(run_scores_list) if run_scores_list else 0.0
+        # I-2: run-average earned points so runs-mode cards stay consistent with avg accuracy
+        avg_points = sum(run_earned_list) / len(run_earned_list) if run_earned_list else 0.0
         ref_run = results["provider_runs"][provider].get("r1", list(results["provider_runs"][provider].values())[0])
         
         cat_averages = {}
@@ -677,6 +714,7 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
         results["provider_scores"][provider] = {
             "total_points": ref_run["total_points"],
             "max_points": ref_run["max_points"],
+            "avg_points": avg_points,
             "total_checks": ref_run["total_checks"],
             "passed_checks": ref_run["passed_checks"],
             "accuracy": mean_acc,
@@ -818,8 +856,11 @@ def format_summary_markdown(results: dict) -> str:
     return "\n".join(lines)
 
 def write_failures_csv(failures: list, csv_path: Path):
-    """Write failure rows to failures.csv."""
+    """Write failure rows to failures.csv; remove a stale CSV from a previous run when zero failures."""
     if not failures:
+        if csv_path.exists():
+            csv_path.unlink()
+            print(f"[INFO] 실패 0건: 이전 실행의 {csv_path.name} 삭제 (stale 산출물 정리)")
         return
     with open(csv_path, "w", encoding="utf-8-sig", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=[
@@ -848,22 +889,26 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     COLORS = ["#2563eb", "#10b981", "#d97706", "#8b5cf6", "#ec4899", "#06b6d4"]
     provider_colors = {p: COLORS[i % len(COLORS)] for i, p in enumerate(providers)}
 
-    # 1. Category Bar Chart SVG
-    svg_cat_bars = []
+    # Shared grouped-bar plot geometry for the accuracy charts
     plot_w = 870.0
-    plot_h = 260.0
     margin_left = 60.0
-    y_0 = 310.0
+    y_0 = 350.0
 
-    # Gridlines
-    grid_lines = []
-    for pct_tick, y_pos in [(100, 50.0), (75, 115.0), (50, 180.0), (25, 245.0), (0, 310.0)]:
-        grid_lines.append(
-            f'<line x1="{margin_left}" y1="{y_pos}" x2="940" y2="{y_pos}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />'
-        )
-        grid_lines.append(
-            f'<text x="{margin_left - 10}" y="{y_pos + 4}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">{pct_tick}%</text>'
-        )
+    def acc_grid_lines(plot_h: float, y_max: float, ticks: Tuple[float, ...]) -> List[str]:
+        lines = []
+        for tick in ticks:
+            y_pos = y_0 - (tick / y_max) * plot_h
+            lines.append(
+                f'<line x1="{margin_left}" y1="{y_pos:.1f}" x2="940" y2="{y_pos:.1f}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />'
+            )
+            lines.append(
+                f'<text x="{margin_left - 10}" y="{y_pos + 4:.1f}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">{tick:.0f}%</text>'
+            )
+        return lines
+
+    # 1. Category Grouped Bar Chart SVG (one bar per provider, runs-average accuracy)
+    cat_plot_h = 290.0
+    grid_lines = acc_grid_lines(cat_plot_h, 100.0, (0, 20, 40, 60, 80, 100))
 
     # Categories slots
     num_cats = len(categories) if categories else 1
@@ -875,6 +920,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     total_group_bars_w = num_p * bar_w + (num_p - 1) * bar_gap
     group_offset = (slot_w - total_group_bars_w) / 2.0
 
+    svg_cat_bars = []
     cat_labels = []
     for cat_i, cat in enumerate(categories):
         slot_x = margin_left + cat_i * slot_w
@@ -883,7 +929,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
 
         for p_i, p in enumerate(providers):
             pct = provider_scores.get(p, {}).get("category_scores", {}).get(cat, {}).get("pct", 0.0)
-            bar_h = (pct / 100.0) * plot_h
+            bar_h = (pct / 100.0) * cat_plot_h
             bx = slot_x + group_offset + p_i * (bar_w + bar_gap)
             by = y_0 - bar_h
             col = provider_colors.get(p, "#2563eb")
@@ -896,17 +942,17 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                 svg_cat_bars.append(
                     f'<text x="{bx + bar_w/2.0:.1f}" y="{val_y:.1f}" text-anchor="middle" font-size="10" font-weight="600" fill="currentColor">{pct:.1f}%</text>'
                 )
-            elif bar_w >= 14.0:
+            elif bar_w >= 13.0:
                 val_y = max(15.0, by - 6.0)
                 svg_cat_bars.append(
                     f'<text x="{bx + bar_w/2.0:.1f}" y="{val_y:.1f}" text-anchor="middle" font-size="9" font-weight="600" fill="currentColor">{pct:.0f}%</text>'
                 )
 
         cat_labels.append(
-            f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 20}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">{cat_short_code}</text>'
+            f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">{cat_short_code}</text>'
         )
         cat_labels.append(
-            f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 36}" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">{cat_short_name}</text>'
+            f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 38}" text-anchor="middle" font-size="10" fill="currentColor" opacity="0.75">{cat_short_name}</text>'
         )
 
     # HTML Legend (Responsive, non-clipped)
@@ -921,12 +967,101 @@ def generate_html_report(results: dict, output_path: Path) -> str:
     html_legend = f'<div class="chart-legend">{" ".join(html_legend_items)}</div>' if html_legend_items else ""
 
     svg_category_chart = f"""
-    <svg viewBox="0 0 960 360" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 960 420" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
         <g class="grid-lines">{' '.join(grid_lines)}</g>
         <g class="bars">{' '.join(svg_cat_bars)}</g>
         <g class="labels">{' '.join(cat_labels)}</g>
     </svg>
     """
+
+    # 2. Per-Run Grouped Bar Chart SVG (r1/r2/r3 shade bars + run-average marker line)
+    svg_run_chart_section = ""
+    if providers and provider_runs:
+        run_plot_h = 285.0
+        run_y_max = 110.0  # headroom above 100% keeps the average marker label clear of bar tops
+        run_grid = acc_grid_lines(run_plot_h, run_y_max, (0, 20, 40, 60, 80, 100))
+        run_slot_w = plot_w / float(len(providers))
+        run_shades = (1.0, 0.62, 0.35)
+
+        run_bars = []
+        run_markers = []
+        run_labels = []
+        for p_i, p in enumerate(providers):
+            runs_dict = provider_runs.get(p, {})
+            run_ids = sorted(runs_dict.keys())
+            slot_x = margin_left + p_i * run_slot_w
+            cx = slot_x + run_slot_w / 2.0
+            num_runs = max(1, len(run_ids))
+            run_bar_w = max(10.0, min(46.0, (run_slot_w - 70.0) / num_runs - 8.0))
+            run_gap = 8.0
+            run_group_w = num_runs * run_bar_w + (num_runs - 1) * run_gap
+            run_offset = (run_slot_w - run_group_w) / 2.0
+            col = provider_colors.get(p, "#2563eb")
+
+            for r_i, rid in enumerate(run_ids):
+                racc = runs_dict[rid].get("accuracy", 0.0)
+                shade = run_shades[r_i % len(run_shades)]
+                bar_h = (racc / run_y_max) * run_plot_h
+                bx = slot_x + run_offset + r_i * (run_bar_w + run_gap)
+                by = y_0 - bar_h
+                run_bars.append(
+                    f'<rect x="{bx:.1f}" y="{by:.1f}" width="{run_bar_w:.1f}" height="{bar_h:.1f}" rx="4" fill="{col}" opacity="{shade}">'
+                    f'<title>{html.escape(p)} {rid}: {racc:.2f}%</title></rect>'
+                )
+                if run_bar_w >= 18.0:
+                    run_bars.append(
+                        f'<text x="{bx + run_bar_w/2.0:.1f}" y="{max(15.0, by - 6.0):.1f}" text-anchor="middle" font-size="9.5" font-weight="600" fill="currentColor">{racc:.1f}%</text>'
+                    )
+
+            avg_acc = provider_scores.get(p, {}).get("accuracy", 0.0)
+            avg_y = y_0 - (avg_acc / run_y_max) * run_plot_h
+            run_markers.append(
+                f'<line x1="{slot_x + 6:.1f}" y1="{avg_y:.1f}" x2="{slot_x + run_slot_w - 6:.1f}" y2="{avg_y:.1f}" '
+                f'stroke="currentColor" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.55" />'
+            )
+            run_markers.append(
+                f'<circle cx="{cx:.1f}" cy="{avg_y:.1f}" r="4.5" fill="{col}" stroke="currentColor" stroke-width="1.5" />'
+            )
+            run_markers.append(
+                f'<text x="{cx:.1f}" y="{avg_y - 10:.1f}" text-anchor="middle" font-size="10.5" font-weight="700" fill="currentColor">평균 {avg_acc:.2f}%</text>'
+            )
+
+            p_short = p if len(p) <= 20 else p[:18] + "…"
+            run_labels.append(
+                f'<text x="{cx:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{html.escape(p_short)}</text>'
+            )
+
+        run_legend_items = []
+        for p in providers:
+            col = provider_colors.get(p, "#2563eb")
+            run_legend_items.append(
+                f'<div class="legend-item"><span class="legend-color-dot" style="background-color: {col};"></span>'
+                f'<span class="legend-text"><strong>{html.escape(p)}</strong></span></div>'
+            )
+        for shade, rid in zip(run_shades, ("r1", "r2", "r3")):
+            run_legend_items.append(
+                f'<div class="legend-item"><span class="legend-color-dot" style="background-color: var(--text-muted); opacity: {shade};"></span>'
+                f'<span class="legend-text">{rid}</span></div>'
+            )
+        run_chart_legend = f'<div class="chart-legend">{" ".join(run_legend_items)}</div>'
+
+        svg_run_chart_section = f"""
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>📈 회차별 정확도 그룹 차트 (Per-Run Accuracy)</h3>
+                    <span class="badge badge-accent">r1 / r2 / r3 명도 막대 + 회차 평균 마커 (%)</span>
+                </div>
+                {run_chart_legend}
+            </div>
+            <svg viewBox="0 0 960 420" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                <g class="grid-lines">{' '.join(run_grid)}</g>
+                <g class="bars">{' '.join(run_bars)}</g>
+                <g class="run-avg-markers">{' '.join(run_markers)}</g>
+                <g class="labels">{' '.join(run_labels)}</g>
+            </svg>
+        </div>
+        """
 
     # 2. Pairwise Divergence Chart SVG (All pairs rendered)
     pairwise_charts_html = []
@@ -1026,7 +1161,14 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         )
 
         p_fails = [f for f in failures if f["provider"] == p]
-        
+
+        if is_runs_mode:
+            pts_label = "평균 획득 점수 (회차 평균)"
+            pts_earned = sc.get("avg_points", sc.get("total_points", 0.0))
+        else:
+            pts_label = "총 획득 점수"
+            pts_earned = sc.get("total_points", 0.0)
+
         runs_breakdown_html = ""
         p_runs = provider_runs.get(p, {})
         if len(p_runs) > 1 or is_runs_mode:
@@ -1060,8 +1202,8 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                     <span class="metric-val">{sc.get('passed_checks', 0)} / {sc.get('total_checks', 0)} ({sc.get('passed_checks', 0)/(sc.get('total_checks', 1) or 1)*100:.1f}%)</span>
                 </div>
                 <div class="metric-item">
-                    <span class="metric-label">총 획득 점수</span>
-                    <span class="metric-val">{sc.get('total_points', 0.0):.1f} / {sc.get('max_points', 0.0):.1f} pt</span>
+                    <span class="metric-label">{pts_label}</span>
+                    <span class="metric-val">{pts_earned:.1f} / {sc.get('max_points', 0.0):.1f} pt</span>
                 </div>
                 <div class="metric-item">
                     <span class="metric-label">실패 체크 건수</span>
@@ -1204,6 +1346,89 @@ def generate_html_report(results: dict, output_path: Path) -> str:
                     {' '.join(run_table_rows)}
                 </tbody>
             </table>
+        </div>
+        """
+
+    # 6. Failure Count by Category Chart SVG (stacked per provider)
+    svg_fail_chart_section = ""
+    if failures and providers:
+        CAT_COLORS = ["#ef4444", "#f97316", "#f59e0b", "#84cc16", "#14b8a6", "#3b82f6", "#a855f7", "#64748b"]
+        cat_color_map = {c: CAT_COLORS[i % len(CAT_COLORS)] for i, c in enumerate(categories)}
+        fail_by_pc = {p: {c: 0 for c in categories} for p in providers}
+        for f in failures:
+            f_p, f_c = f.get("provider"), f.get("category")
+            if f_p in fail_by_pc and f_c in fail_by_pc[f_p]:
+                fail_by_pc[f_p][f_c] += 1
+        max_total_fails = max((sum(fail_by_pc[p].values()) for p in providers), default=0)
+        fail_y_max = float(max(5, math.ceil(max_total_fails / 5.0) * 5))
+        fail_plot_h = 285.0
+        fail_step = fail_y_max / 5.0
+        fail_grid = []
+        for i in range(6):
+            t = fail_step * i
+            y_pos = y_0 - (t / fail_y_max) * fail_plot_h
+            fail_grid.append(
+                f'<line x1="{margin_left}" y1="{y_pos:.1f}" x2="940" y2="{y_pos:.1f}" stroke="currentColor" stroke-dasharray="3,3" opacity="0.15" />'
+            )
+            fail_grid.append(
+                f'<text x="{margin_left - 10}" y="{y_pos + 4:.1f}" text-anchor="end" font-size="11" fill="currentColor" opacity="0.7">{t:.0f}건</text>'
+            )
+        fail_slot_w = plot_w / float(len(providers))
+        fail_bars = []
+        fail_labels = []
+        for p_i, p in enumerate(providers):
+            slot_x = margin_left + p_i * fail_slot_w
+            cx = slot_x + fail_slot_w / 2.0
+            f_bar_w = min(90.0, fail_slot_w - 70.0)
+            bx = cx - f_bar_w / 2.0
+            stack_y = y_0
+            for cat in categories:
+                cnt = fail_by_pc[p][cat]
+                if cnt <= 0:
+                    continue
+                seg_h = (cnt / fail_y_max) * fail_plot_h
+                stack_y -= seg_h
+                fail_bars.append(
+                    f'<rect x="{bx:.1f}" y="{stack_y:.1f}" width="{f_bar_w:.1f}" height="{seg_h:.1f}" fill="{cat_color_map[cat]}">'
+                    f'<title>{html.escape(p)} · {cat}: {cnt}건</title></rect>'
+                )
+                if seg_h >= 16.0:
+                    fail_bars.append(
+                        f'<text x="{cx:.1f}" y="{stack_y + seg_h/2.0 + 4:.1f}" text-anchor="middle" font-size="10" font-weight="700" fill="#ffffff">{cnt}</text>'
+                    )
+            total_f = sum(fail_by_pc[p].values())
+            fail_labels.append(
+                f'<text x="{cx:.1f}" y="{max(15.0, stack_y - 8.0):.1f}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{total_f}건</text>'
+            )
+            p_short = p if len(p) <= 20 else p[:18] + "…"
+            fail_labels.append(
+                f'<text x="{cx:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="11" font-weight="700" fill="currentColor">{html.escape(p_short)}</text>'
+            )
+
+        fail_legend_items = []
+        for cat in categories:
+            c_code = cat.split("_")[0]
+            c_name = cat.split("_")[1] if "_" in cat else cat
+            fail_legend_items.append(
+                f'<div class="legend-item"><span class="legend-color-dot" style="background-color: {cat_color_map[cat]};"></span>'
+                f'<span class="legend-text">{c_code} {html.escape(c_name)}</span></div>'
+            )
+        fail_chart_legend = f'<div class="chart-legend">{" ".join(fail_legend_items)}</div>'
+
+        svg_fail_chart_section = f"""
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h3>📉 실패 건수 카테고리 분포 (Failure Count by Category)</h3>
+                    <span class="badge badge-fail">누적 실패 체크 {len(failures)}건</span>
+                </div>
+                {fail_chart_legend}
+            </div>
+            <svg viewBox="0 0 960 420" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
+                <g class="grid-lines">{' '.join(fail_grid)}</g>
+                <g class="bars">{' '.join(fail_bars)}</g>
+                <g class="labels">{' '.join(fail_labels)}</g>
+            </svg>
         </div>
         """
 
@@ -1464,7 +1689,7 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         .chart-svg {{
             width: 100%;
             height: auto;
-            max-height: 400px;
+            max-height: 480px;
             display: block;
         }}
         .truncation-box {{
@@ -1648,19 +1873,23 @@ def generate_html_report(results: dict, output_path: Path) -> str:
         <section class="card">
             <div class="card-header">
                 <div>
-                    <h3>📊 카테고리 8종 비교 분석 (Category Accuracy Matrix)</h3>
-                    <span class="badge badge-accent">프로바이더별 영역 정확도 (%)</span>
+                    <h3>📊 카테고리별 정확도 그룹 차트 (Category-Level Accuracy)</h3>
+                    <span class="badge badge-accent">프로바이더별 회차 평균 정확도 (%)</span>
                 </div>
                 {html_legend}
             </div>
             {svg_category_chart}
         </section>
 
+        {svg_run_chart_section}
+
         {svg_pairwise_chart}
 
         {multi_run_section}
 
         {failures_html}
+
+        {svg_fail_chart_section}
 
         <footer class="footer">
             <p><strong>측정 대상 명명</strong>: 본 결과는 '모델 품질'이 아니라 <strong>'동일 하네스 조건에서의 프로바이더 간 출력 차이'</strong>를 나타냅니다.</p>
@@ -1732,47 +1961,32 @@ def main():
     )
     
     args = parser.parse_args()
-    
+
     master_path = Path(args.master)
     responses_path = Path(args.responses)
     summary_path = Path(args.output_summary)
     csv_path = Path(args.output_csv)
     html_path = Path(args.output_html)
-    
-    if not master_path.exists():
-        alt_path = Path.cwd() / "checks_master.json"
-        if alt_path.exists():
-            master_path = alt_path
-        else:
-            print(f"[ERROR] checks_master.json not found at {master_path}", file=sys.stderr)
-            sys.exit(1)
-            
-    pack_dir = Path(__file__).resolve().parent
-    default_pack_responses = pack_dir / "responses"
-    if responses_path.resolve() == default_pack_responses.resolve():
-        cwd_responses = Path.cwd() / "responses"
-        if cwd_responses.exists() and cwd_responses.is_dir() and cwd_responses.resolve() != default_pack_responses.resolve():
-            if any(cwd_responses.iterdir()):
-                responses_path = cwd_responses
 
-    if not responses_path.exists():
-        alt_resp = Path.cwd() / "responses"
-        if alt_resp.exists():
-            responses_path = alt_resp
-            
+    if not master_path.exists():
+        print(f"[ERROR] checks_master.json not found at {master_path}", file=sys.stderr)
+        sys.exit(1)
+
+    pack_dir = Path(__file__).resolve().parent
+
     results = run_scoring(master_path, responses_path, is_runs_mode=args.runs)
     markdown_report = format_summary_markdown(results)
-    
+
     # Print to stdout
     print(markdown_report)
-    
+
     # Save results_summary.md
     summary_path.write_text(markdown_report, encoding="utf-8")
     print(f"\n[INFO] Saved results summary to: {summary_path}")
-    
-    # Save failures.csv
+
+    # Save failures.csv (write_failures_csv also removes a stale CSV on zero failures)
+    write_failures_csv(results["failures"], csv_path)
     if results["failures"]:
-        write_failures_csv(results["failures"], csv_path)
         print(f"[INFO] Saved {len(results['failures'])} check failures to: {csv_path}")
     else:
         if results.get("providers"):
@@ -1783,18 +1997,6 @@ def main():
     # Save report.html
     generate_html_report(results, html_path)
     print(f"[INFO] Saved visual HTML dashboard to: {html_path}")
-
-    # Also mirror report.html and results_summary.md to current working directory if run from outside pack_dir
-    cwd_dir = Path.cwd()
-    if cwd_dir.resolve() != pack_dir.resolve():
-        try:
-            cwd_html = cwd_dir / "report.html"
-            generate_html_report(results, cwd_html)
-            print(f"[INFO] Mirrored visual HTML dashboard to: {cwd_html}")
-            cwd_summary = cwd_dir / "results_summary.md"
-            cwd_summary.write_text(markdown_report, encoding="utf-8")
-        except Exception:
-            pass
 
     # Ensure pack_dir copy of report.html is always kept up to date
     pack_report = pack_dir / "report.html"
