@@ -1,3 +1,5 @@
+🌐 [English](README_EN.md) | [한국어](README.md)
+
 # Zoo Code Custom Mode용 CJK-Flip 테스트 팩 — 동일 주입 · 자동 판정 키트
 
 본 리포지토리는 Zoo Code Custom Mode 환경에서 프로바이더/양자화(FP4 vs FP8 등) 간 출력 품질의 미세 차이를 298개 check 단위로 정밀 판정하는 무의존성(Zero-External-Dependency) 자동 평가 키트입니다.

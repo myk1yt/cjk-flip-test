@@ -1,3 +1,5 @@
+🌐 [English](README_EN.md) | [한국어](README.md)
+
 # Zoo Code Custom Mode용 CJK-Flip 테스트 팩
 ## 동일 주입 · 자동 결정적 판정 키트 (Zero-External-Dependency)
 
