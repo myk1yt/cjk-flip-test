@@ -21,13 +21,26 @@
 
 ---
 
+## 🛠️ Zoo Code Custom Mode 표준 설정 (`test_cjk_flip`)
+
+동일 하네스 조건과 무간섭 독립 변인 통제를 위해 Zoo Code에 아래와 같이 전용 커스텀 모드를 설정합니다:
+
+1. **Custom Mode 생성**: 모드 이름을 **`test_cjk_flip`**으로 설정합니다.
+2. **Role Definition (역할 정의)**: 사족이나 임의 개입을 원천 차단하기 위해 아래 영문 단 1줄만 정확히 입력합니다:
+   > `Perform only the given task and provide no unnecessary explanations.`
+3. **Tools (도구 권한)**: 모든 도구 권한(File Edit, Write, Terminal, MCP 등)을 **전부 해제(`None`)**하여 모델이 임의로 파일을 수정하거나 스크립트를 생성하지 못하도록 통제합니다.
+4. **단일 독립 변인 통제**: 빈 작업 폴더에서 위 환경을 100% 동일하게 고정한 채, 오직 **프로바이더(Provider Profile / Quantization)** 설정만 교체하며 실행합니다.
+
+---
+
 ## 🚀 1회 복붙용 '메가 배치(Mega-Batch)' 워크플로우
 
 40회 반복 복사-붙여넣기 피로도를 완전히 해소하기 위해 1회 주입 규격을 지원합니다:
 
-1. `flip-test-pack/prompts/MEGA_BATCH.md` 내용을 복사하여 Zoo Code 입력창에 1회 붙여넣습니다.
-2. 모델이 출력한 40개 문항 응답 전문을 `flip-test-pack/responses/{provider}/MEGA.md` 단 1개 파일로 저장합니다.
-3. `run_score.bat`를 더블클릭하면 채점기가 자동으로 메가 배치 규격을 감지하여 채점하고, 토큰 절단(Truncation) 발생 시 권장 조치 경고를 출력합니다.
+1. Zoo Code에서 `test_cjk_flip` 모드를 선택하고 대상 프로바이더를 지정합니다.
+2. `flip-test-pack/prompts/MEGA_BATCH.md` 내용을 복사하여 Zoo Code 입력창에 1회 붙여넣습니다.
+3. 모델이 출력한 40개 문항 응답 전문을 `flip-test-pack/responses/{provider}/MEGA.md` 단 1개 파일로 저장합니다.
+4. `run_score.bat`를 더블클릭하면 채점기가 자동으로 메가 배치 규격을 감지하여 채점하고, 토큰 절단(Truncation) 발생 시 권장 조치 경고를 출력합니다.
 
 ---
 

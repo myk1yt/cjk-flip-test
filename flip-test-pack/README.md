@@ -18,7 +18,7 @@ VS Code 기반 LLM 보조 도구(Zoo Code 등)는 동일한 모델 가중치를 
 3. **엄격한 포맷 이탈**: JSON 스키마, 문장 개수, 음수 제약 조건(한자 사용 금지 등) 준수율이 경량화 프로바이더에서 붕괴됩니다.
 
 ### 0.2 실험 설계 원칙
-- **철저한 통제 변인**: Zoo Code의 Custom Mode 지시문, 온도(temperature), 주입 순서, 테스트 프롬프트, 작업 디렉토리 환경을 100% 동일하게 고정합니다.
+- **철저한 통제 변인**: Zoo Code의 Custom Mode 설정(`test_cjk_flip`), 온도(temperature), 주입 순서, 테스트 프롬프트, 작업 디렉토리 환경을 100% 동일하게 고정합니다.
 - **유일한 독립 변인**: Zoo Code의 **프로바이더 설정(Provider Profile / Quantization)**만을 교체합니다.
 - **종속 변인**: 8개 영역 40개 프롬프트에 걸쳐 배치된 **298개의 결정적 체크(Checks)** 통과 여부 및 카테고리별 정확도 편차(%p).
 
@@ -94,16 +94,15 @@ flip-test-pack/
 
 ## 4. 단계별 실행 절차 (Step-by-Step Guide)
 
-### 1단계: 통제 환경 준비
-1. 빈 폴더를 생성하고 VS Code로 엽니다.
-2. Zoo Code 확장을 실행하고, Custom Mode를 하나 신규 생성합니다 (이름: `flip-test`).
-3. **모드의 지시문(Instructions)**은 **완전 빈칸**으로 둡니다.
-   *(만약 빈칸 설정 저장이 불가능한 버전일 경우에만 통제용 중립 문장 1개를 입력하십시오)*:
-   > `"주어진 작업만 수행하고 불필요한 설명은 하지 않는다."`  
-   > *(⚠️ 주의: 이 문장은 실험 전체 기간 동안 단 한 글자도 수정해서는 안 됩니다)*
-4. Zoo Code 설정에서 **도구(Tools/MCP) 사용을 전부 끕니다 (`none`)**.
-5. Temperature 설정이 가능한 프로바이더 프로필의 경우 **`0`으로 고정**합니다.
-6. 작업 폴더나 사용자 전역에 개입할 수 있는 룰 파일(`.cursorrules`, `.windsurfrules`, `.gemini/rules`, 메모리 등)이 전혀 없는지 확인합니다.
+### 1단계: 통제 환경 준비 (Zoo Code Custom Mode 설정)
+1. 빈 폴더를 생성하고 VS Code로 엽니다 (전역 룰 파일 `.cursorrules`, `.windsurfrules`, `.gemini/rules` 등 간섭 요소를 배제한 순수 빈 작업 영역).
+2. Zoo Code 확장을 실행하고, 전용 Custom Mode를 신규 생성합니다:
+   - **모드 이름**: `test_cjk_flip`
+   - **Role Definition (역할 정의)**: 아래 영문 단 1줄만 정확히 입력합니다:
+     > `Perform only the given task and provide no unnecessary explanations.`
+   - **도구 권한(Tools/MCP)**: File Edit, Write, Terminal, MCP 등 모든 도구 사용 권한을 **전부 해제(`None`)**하여 모델이 임의로 파일을 수정하거나 스크립트를 생성하지 못하도록 통제합니다.
+3. Temperature 설정이 가능한 프로바이더 프로필의 경우 **`0`으로 고정**합니다.
+4. **단일 독립 변인 통제**: 모드 설정, 작업 폴더(빈 폴더), 프롬프트 순서 등 모든 환경을 100% 동일하게 고정한 채, 오직 **프로바이더(Provider Profile / Quantization)** 설정만 교체하며 실행합니다.
 
 ### 2단계: 프로바이더 A 실행 (메가 배치 또는 개별 모드)
 - **방법 1 (권장: 1회 복붙 메가 배치 모드)**:
@@ -153,11 +152,12 @@ flip-test-pack/
 
 | 점검 항목 | 통제 기준 | 확인 |
 | :--- | :--- | :---: |
-| **프롬프트 주입** | T01부터 T40까지 단 한 번의 건너뜀 없이 동일한 순서로 주입 | [ ] |
-| **시스템 프롬프트** | 'flip-test' Custom Mode 지시문 빈칸(또는 중립문장 1개) 고정 | [ ] |
+| **프롬프트 주입** | T01부터 T40(또는 MEGA_BATCH)까지 단 한 번의 건너뜀 없이 동일한 순서로 주입 | [ ] |
+| **Custom Mode** | `test_cjk_flip` 모드 (Role: `Perform only the given task and provide no unnecessary explanations.`) 고정 | [ ] |
+| **도구 비활성화** | Zoo Code 내 모든 Tool/MCP/터미널/파일수정 사용 권한 전부 해제(`None`) 유지 | [ ] |
+| **단일 독립 변인** | 환경·모드 100% 동일 고정, 오직 프로바이더(Provider Profile / Quantization) 설정만 교체 | [ ] |
 | **Temperature** | 프로바이더 설정에서 temperature = 0.0 고정 (지원 시) | [ ] |
-| **도구 비활성화** | Zoo Code 내 모든 Tool/MCP/터미널 실행 권한을 off 상태로 유지 | [ ] |
-| **환경 오염 격리** | 프로젝트 루트 및 사용자 홈에 instruction 파일(전역 지시문 등) 부재 확인 | [ ] |
+| **환경 오염 격리** | 빈 작업 폴더 사용, 전역 룰 파일(`.cursorrules` 등) 및 메모리 간섭 부재 확인 | [ ] |
 | **마커 보존** | responses 파일 저장 시 ⟪ 와 ⟫ 마커가 온전히 보존되어 있는지 확인 | [ ] |
 
 ---
