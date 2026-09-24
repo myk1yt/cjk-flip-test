@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Caches and temporary files
+*.bak
+*.swp
+*.tmp
+*~
+.DS_Store
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+
+# Python test & coverage artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE and Editor directories
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Agent & Orchestration session artifacts
+.gemini/
+scratch/
+brain/
+docs/
+
+# Local temporary and non-standard root folders
+/Moonshot_Kimi_K3_Max/
+/Charm_Kimi_K3_Max/
+/NW_Kimi_K3_Max/

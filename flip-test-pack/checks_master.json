@@ -1,0 +1,3110 @@
+{
+  "version": "1.0.0",
+  "total_prompts": 40,
+  "total_checks": 298,
+  "categories": [
+    "F1_언어정체성플립",
+    "F3_자형변환",
+    "F6_문자열정밀조작",
+    "F7_장문정확인용",
+    "F8_출력형식제약",
+    "F4_회귀번역",
+    "F9_희귀한자숙어",
+    "F10_다단계추론"
+  ],
+  "prompts": {
+    "T01": {
+      "id": "T01",
+      "category": "F1_언어정체성플립",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "국한문혼용 행정 문장의 정체성 식별 및 한자 독음 분해 시 양자화 손실로 인한 오독음 발생 빈발",
+      "expected_marker_content": "1. 언어: 한국어(국한문혼용)\n2. 한글 전환: 이 건 신청서 첨부 서류 미비에 의한 각하 처분 통지 건\n3. 독음: 차건, 신청서, 첨부, 서류, 미비, 의, 각하, 처분",
+      "checks": [
+        {
+          "id": "T01_C1",
+          "type": "contains",
+          "expected": "한국어(국한문혼용)",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "언어 정체성 판별"
+        },
+        {
+          "id": "T01_C2",
+          "type": "contains",
+          "expected": "신청서 첨부 서류 미비",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한글 전환 핵심 구문 1"
+        },
+        {
+          "id": "T01_C3",
+          "type": "contains",
+          "expected": "각하 처분 통지",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한글 전환 핵심 구문 2"
+        },
+        {
+          "id": "T01_C4",
+          "type": "contains",
+          "expected": "차건, 신청서, 첨부, 서류",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한자 독음 전반부"
+        },
+        {
+          "id": "T01_C5",
+          "type": "contains",
+          "expected": "미비, 의, 각하, 처분",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한자 독음 후반부"
+        }
+      ]
+    },
+    "T02": {
+      "id": "T02",
+      "category": "F1_언어정체성플립",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "rare-token"
+      ],
+      "rationale": "일본 관청 행정 한자어 나열 구조에서 히라가나 탈락 및 한국식 한자 독음 오인 혼동 유발",
+      "expected_marker_content": "1. 언어: 일본어\n2. 한국어 번역: 도쿄도 지요다구 가스미가세키 1초메 3번 1호 경제산업성 대신관방 총무과에서의 행정 절차 간소화에 관한 방침\n3. 한국어 표기: 도쿄도, 가스미가세키, 경제산업성, 대신관방, 행정 절차",
+      "checks": [
+        {
+          "id": "T02_C1",
+          "type": "contains",
+          "expected": "일본어",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "언어 정체성 식별"
+        },
+        {
+          "id": "T02_C2",
+          "type": "contains",
+          "expected": "경제산업성",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "기관명 정확 번역"
+        },
+        {
+          "id": "T02_C3",
+          "type": "contains",
+          "expected": "행정 절차 간소화",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "행정 용어 번역"
+        },
+        {
+          "id": "T02_C4",
+          "type": "contains",
+          "expected": "도쿄도, 가스미가세키",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "지명 외래어 표기"
+        },
+        {
+          "id": "T02_C5",
+          "type": "regex",
+          "expected": "2\\.\\s*(?:한국어\\s*)?(?:번역|완역)?:\\s*[^\\n\\r]*[가-힣]",
+          "norm": "none",
+          "points": 1,
+          "desc": "한국어 번역문 형식 준수"
+        }
+      ]
+    },
+    "T03": {
+      "id": "T03",
+      "category": "F1_언어정체성플립",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "중국어 간체 공문서 문장이 한국어 한문 투로 왜곡되거나 번체자와 혼재되는 양자화 왜곡 검증",
+      "expected_marker_content": "1. 언어: 중국어(간체)\n2. 한국어 번역: 외국인 투자 환경을 한층 더 최적화하고 외국인 투자 유치 노력을 확대하는 데 관한 몇 가지 의견에 따라, 마땅히 법에 의거하여 외국인 투자 기업의 합법적 권익을 보호해야 한다.\n3. 핵심 어휘: 최적화, 외국인투자(외상투자), 응당(마땅히), 의법(법에의거), 합법권익",
+      "checks": [
+        {
+          "id": "T03_C1",
+          "type": "contains",
+          "expected": "중국어(간체)",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "간체 정체성 식별"
+        },
+        {
+          "id": "T03_C2",
+          "type": "contains",
+          "expected": "외국인 투자 환경",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "투자 환경 번역 일치"
+        },
+        {
+          "id": "T03_C3",
+          "type": "contains",
+          "expected": "합법적 권익",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "권익 번역 일치"
+        },
+        {
+          "id": "T03_C4",
+          "type": "contains",
+          "expected": "최적화",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "핵심 어휘 일치"
+        },
+        {
+          "id": "T03_C5",
+          "type": "contains",
+          "expected": "합법권익",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한자음 식별"
+        }
+      ]
+    },
+    "T04": {
+      "id": "T04",
+      "category": "F1_언어정체성플립",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "정체자(번체자) 교육 법규 문장에서 간체자 변질 및 한국어 혼동 유무 판정",
+      "expected_marker_content": "1. 언어: 중국어(번체)\n2. 한국어 번역: 대만 지역 각급 학교의 환경 교육 추진 실시 원칙 및 평가 기준은, 지속 가능한 발전 이념을 실현하고 교사와 학생의 생태 소양을 향상하는 것을 목표로 한다.\n3. 어휘 대조: 대만, 실시원칙, 평가기준, 지속가능발전(영속발전)",
+      "checks": [
+        {
+          "id": "T04_C1",
+          "type": "contains",
+          "expected": "중국어(번체)",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "번체 정체성 식별"
+        },
+        {
+          "id": "T04_C2",
+          "type": "regex",
+          "expected": "지속\\s*가능(?:한)?\\s*발전",
+          "norm": "none",
+          "points": 1,
+          "desc": "永續發展 대응 번역"
+        },
+        {
+          "id": "T04_C3",
+          "type": "contains",
+          "expected": "생태 소양",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "生態素養 번역"
+        },
+        {
+          "id": "T04_C4",
+          "type": "contains",
+          "expected": "평가기준",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "評鑑基準 한국어 대응"
+        },
+        {
+          "id": "T04_C5",
+          "type": "contains",
+          "expected": "실시원칙",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "實施原則 한국어 대응"
+        }
+      ]
+    },
+    "T05": {
+      "id": "T05",
+      "category": "F1_언어정체성플립",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "rare-token"
+      ],
+      "rationale": "동형이의어(False Friends: 手紙, 愛人, 做工夫, 勉強) 해석 시 양자화 모델의 언어 도메인 붕괴 감지",
+      "expected_marker_content": "1. 언어: 중국어\n2. 한국어 번역: 그는 어두운 방에서 진지하게 공을 들이며 배우자에게 한 통의 편지를 쓸 준비를 하고 있었는데, 이는 엄청난 애씀과 인내심을 필요로 했다.\n3. 단어 의미:\n- 做工夫: 공을 들이다 (시간과 노력을 들이다)\n- 愛人: 배우자 (남편 또는 아내)\n- 手紙: 편지\n- 勉強: 억지로 힘씀 (애씀/무리함)",
+      "checks": [
+        {
+          "id": "T05_C1",
+          "type": "contains",
+          "expected": "중국어",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "언어 식별"
+        },
+        {
+          "id": "T05_C2",
+          "type": "contains",
+          "expected": "배우자",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "愛人=배우자 올바른 번역"
+        },
+        {
+          "id": "T05_C3",
+          "type": "contains",
+          "expected": "편지",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "手紙=편지 올바른 번역"
+        },
+        {
+          "id": "T05_C4",
+          "type": "contains",
+          "expected": "공을",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "做工夫=공을 들이다 올바른 번역"
+        },
+        {
+          "id": "T05_C5",
+          "type": "regex",
+          "expected": "(애씀|힘씀|억지로)",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "勉強 문맥적 번역"
+        }
+      ]
+    },
+    "T06": {
+      "id": "T06",
+      "category": "F3_자형변환",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "간체-번체 1:1 글자 매핑 정밀도 판정. 양자화 단계에서 고빈도 한자 자형 글리프 치환 실패 검증",
+      "expected_marker_content": "愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀",
+      "checks": [
+        {
+          "id": "T06_C01",
+          "type": "exact",
+          "char_index": 0,
+          "expected": "愛",
+          "norm": "none",
+          "points": 1,
+          "desc": "1번째 글자 '爱' -> '愛'"
+        },
+        {
+          "id": "T06_C02",
+          "type": "exact",
+          "char_index": 1,
+          "expected": "國",
+          "norm": "none",
+          "points": 1,
+          "desc": "2번째 글자 '国' -> '國'"
+        },
+        {
+          "id": "T06_C03",
+          "type": "exact",
+          "char_index": 2,
+          "expected": "發",
+          "norm": "none",
+          "points": 1,
+          "desc": "3번째 글자 '发' -> '發'"
+        },
+        {
+          "id": "T06_C04",
+          "type": "exact",
+          "char_index": 3,
+          "expected": "財",
+          "norm": "none",
+          "points": 1,
+          "desc": "4번째 글자 '财' -> '財'"
+        },
+        {
+          "id": "T06_C05",
+          "type": "exact",
+          "char_index": 4,
+          "expected": "龍",
+          "norm": "none",
+          "points": 1,
+          "desc": "5번째 글자 '龙' -> '龍'"
+        },
+        {
+          "id": "T06_C06",
+          "type": "exact",
+          "char_index": 5,
+          "expected": "馬",
+          "norm": "none",
+          "points": 1,
+          "desc": "6번째 글자 '马' -> '馬'"
+        },
+        {
+          "id": "T06_C07",
+          "type": "exact",
+          "char_index": 6,
+          "expected": "車",
+          "norm": "none",
+          "points": 1,
+          "desc": "7번째 글자 '车' -> '車'"
+        },
+        {
+          "id": "T06_C08",
+          "type": "exact",
+          "char_index": 7,
+          "expected": "關",
+          "norm": "none",
+          "points": 1,
+          "desc": "8번째 글자 '关' -> '關'"
+        },
+        {
+          "id": "T06_C09",
+          "type": "exact",
+          "char_index": 8,
+          "expected": "開",
+          "norm": "none",
+          "points": 1,
+          "desc": "9번째 글자 '开' -> '開'"
+        },
+        {
+          "id": "T06_C10",
+          "type": "exact",
+          "char_index": 9,
+          "expected": "學",
+          "norm": "none",
+          "points": 1,
+          "desc": "10번째 글자 '学' -> '學'"
+        },
+        {
+          "id": "T06_C11",
+          "type": "exact",
+          "char_index": 10,
+          "expected": "門",
+          "norm": "none",
+          "points": 1,
+          "desc": "11번째 글자 '门' -> '門'"
+        },
+        {
+          "id": "T06_C12",
+          "type": "exact",
+          "char_index": 11,
+          "expected": "書",
+          "norm": "none",
+          "points": 1,
+          "desc": "12번째 글자 '书' -> '書'"
+        },
+        {
+          "id": "T06_C13",
+          "type": "exact",
+          "char_index": 12,
+          "expected": "長",
+          "norm": "none",
+          "points": 1,
+          "desc": "13번째 글자 '长' -> '長'"
+        },
+        {
+          "id": "T06_C14",
+          "type": "exact",
+          "char_index": 13,
+          "expected": "東",
+          "norm": "none",
+          "points": 1,
+          "desc": "14번째 글자 '东' -> '東'"
+        },
+        {
+          "id": "T06_C15",
+          "type": "exact",
+          "char_index": 14,
+          "expected": "語",
+          "norm": "none",
+          "points": 1,
+          "desc": "15번째 글자 '语' -> '語'"
+        },
+        {
+          "id": "T06_C16",
+          "type": "exact",
+          "char_index": 15,
+          "expected": "鳥",
+          "norm": "none",
+          "points": 1,
+          "desc": "16번째 글자 '鸟' -> '鳥'"
+        },
+        {
+          "id": "T06_C17",
+          "type": "exact",
+          "char_index": 16,
+          "expected": "魚",
+          "norm": "none",
+          "points": 1,
+          "desc": "17번째 글자 '鱼' -> '魚'"
+        },
+        {
+          "id": "T06_C18",
+          "type": "exact",
+          "char_index": 17,
+          "expected": "點",
+          "norm": "none",
+          "points": 1,
+          "desc": "18번째 글자 '点' -> '點'"
+        },
+        {
+          "id": "T06_C19",
+          "type": "exact",
+          "char_index": 18,
+          "expected": "買",
+          "norm": "none",
+          "points": 1,
+          "desc": "19번째 글자 '买' -> '買'"
+        },
+        {
+          "id": "T06_C20",
+          "type": "exact",
+          "char_index": 19,
+          "expected": "賣",
+          "norm": "none",
+          "points": 1,
+          "desc": "20번째 글자 '卖' -> '賣'"
+        },
+        {
+          "id": "T06_C21",
+          "type": "exact",
+          "char_index": 20,
+          "expected": "歸",
+          "norm": "none",
+          "points": 1,
+          "desc": "21번째 글자 '归' -> '歸'"
+        },
+        {
+          "id": "T06_C22",
+          "type": "exact",
+          "char_index": 21,
+          "expected": "電",
+          "norm": "none",
+          "points": 1,
+          "desc": "22번째 글자 '电' -> '電'"
+        },
+        {
+          "id": "T06_C23",
+          "type": "exact",
+          "char_index": 22,
+          "expected": "歡",
+          "norm": "none",
+          "points": 1,
+          "desc": "23번째 글자 '欢' -> '歡'"
+        },
+        {
+          "id": "T06_C24",
+          "type": "exact",
+          "char_index": 23,
+          "expected": "鐵",
+          "norm": "none",
+          "points": 1,
+          "desc": "24번째 글자 '铁' -> '鐵'"
+        },
+        {
+          "id": "T06_C25",
+          "type": "exact",
+          "char_index": 24,
+          "expected": "銀",
+          "norm": "none",
+          "points": 1,
+          "desc": "25번째 글자 '银' -> '銀'"
+        },
+        {
+          "id": "T06_C26",
+          "type": "exact",
+          "expected": "愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "25자 전체 번체자 문자열 일치"
+        }
+      ]
+    },
+    "T07": {
+      "id": "T07",
+      "category": "F3_자형변환",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "번체-간체 역변환 1:1 글자 매핑 정밀도 판정. 어휘 문맥 없이 자형만 단독 제시 시 변환 정확도",
+      "expected_marker_content": "义气广东台湾经济国际飞机导弹电脑图书馆压缩优质审查",
+      "checks": [
+        {
+          "id": "T07_C01",
+          "type": "exact",
+          "char_index": 0,
+          "expected": "义",
+          "norm": "none",
+          "points": 1,
+          "desc": "1번째 글자 '義' -> '义'"
+        },
+        {
+          "id": "T07_C02",
+          "type": "exact",
+          "char_index": 1,
+          "expected": "气",
+          "norm": "none",
+          "points": 1,
+          "desc": "2번째 글자 '氣' -> '气'"
+        },
+        {
+          "id": "T07_C03",
+          "type": "exact",
+          "char_index": 2,
+          "expected": "广",
+          "norm": "none",
+          "points": 1,
+          "desc": "3번째 글자 '廣' -> '广'"
+        },
+        {
+          "id": "T07_C04",
+          "type": "exact",
+          "char_index": 3,
+          "expected": "东",
+          "norm": "none",
+          "points": 1,
+          "desc": "4번째 글자 '東' -> '东'"
+        },
+        {
+          "id": "T07_C05",
+          "type": "exact",
+          "char_index": 4,
+          "expected": "台",
+          "norm": "none",
+          "points": 1,
+          "desc": "5번째 글자 '臺' -> '台'"
+        },
+        {
+          "id": "T07_C06",
+          "type": "exact",
+          "char_index": 5,
+          "expected": "湾",
+          "norm": "none",
+          "points": 1,
+          "desc": "6번째 글자 '灣' -> '湾'"
+        },
+        {
+          "id": "T07_C07",
+          "type": "exact",
+          "char_index": 6,
+          "expected": "经",
+          "norm": "none",
+          "points": 1,
+          "desc": "7번째 글자 '經' -> '经'"
+        },
+        {
+          "id": "T07_C08",
+          "type": "exact",
+          "char_index": 7,
+          "expected": "济",
+          "norm": "none",
+          "points": 1,
+          "desc": "8번째 글자 '濟' -> '济'"
+        },
+        {
+          "id": "T07_C09",
+          "type": "exact",
+          "char_index": 8,
+          "expected": "国",
+          "norm": "none",
+          "points": 1,
+          "desc": "9번째 글자 '國' -> '国'"
+        },
+        {
+          "id": "T07_C10",
+          "type": "exact",
+          "char_index": 9,
+          "expected": "际",
+          "norm": "none",
+          "points": 1,
+          "desc": "10번째 글자 '際' -> '际'"
+        },
+        {
+          "id": "T07_C11",
+          "type": "exact",
+          "char_index": 10,
+          "expected": "飞",
+          "norm": "none",
+          "points": 1,
+          "desc": "11번째 글자 '飛' -> '飞'"
+        },
+        {
+          "id": "T07_C12",
+          "type": "exact",
+          "char_index": 11,
+          "expected": "机",
+          "norm": "none",
+          "points": 1,
+          "desc": "12번째 글자 '機' -> '机'"
+        },
+        {
+          "id": "T07_C13",
+          "type": "exact",
+          "char_index": 12,
+          "expected": "导",
+          "norm": "none",
+          "points": 1,
+          "desc": "13번째 글자 '導' -> '导'"
+        },
+        {
+          "id": "T07_C14",
+          "type": "exact",
+          "char_index": 13,
+          "expected": "弹",
+          "norm": "none",
+          "points": 1,
+          "desc": "14번째 글자 '彈' -> '弹'"
+        },
+        {
+          "id": "T07_C15",
+          "type": "exact",
+          "char_index": 14,
+          "expected": "电",
+          "norm": "none",
+          "points": 1,
+          "desc": "15번째 글자 '電' -> '电'"
+        },
+        {
+          "id": "T07_C16",
+          "type": "exact",
+          "char_index": 15,
+          "expected": "脑",
+          "norm": "none",
+          "points": 1,
+          "desc": "16번째 글자 '腦' -> '脑'"
+        },
+        {
+          "id": "T07_C17",
+          "type": "exact",
+          "char_index": 16,
+          "expected": "图",
+          "norm": "none",
+          "points": 1,
+          "desc": "17번째 글자 '圖' -> '图'"
+        },
+        {
+          "id": "T07_C18",
+          "type": "exact",
+          "char_index": 17,
+          "expected": "书",
+          "norm": "none",
+          "points": 1,
+          "desc": "18번째 글자 '書' -> '书'"
+        },
+        {
+          "id": "T07_C19",
+          "type": "exact",
+          "char_index": 18,
+          "expected": "馆",
+          "norm": "none",
+          "points": 1,
+          "desc": "19번째 글자 '館' -> '馆'"
+        },
+        {
+          "id": "T07_C20",
+          "type": "exact",
+          "char_index": 19,
+          "expected": "压",
+          "norm": "none",
+          "points": 1,
+          "desc": "20번째 글자 '壓' -> '压'"
+        },
+        {
+          "id": "T07_C21",
+          "type": "exact",
+          "char_index": 20,
+          "expected": "缩",
+          "norm": "none",
+          "points": 1,
+          "desc": "21번째 글자 '縮' -> '缩'"
+        },
+        {
+          "id": "T07_C22",
+          "type": "exact",
+          "char_index": 21,
+          "expected": "优",
+          "norm": "none",
+          "points": 1,
+          "desc": "22번째 글자 '優' -> '优'"
+        },
+        {
+          "id": "T07_C23",
+          "type": "exact",
+          "char_index": 22,
+          "expected": "质",
+          "norm": "none",
+          "points": 1,
+          "desc": "23번째 글자 '質' -> '质'"
+        },
+        {
+          "id": "T07_C24",
+          "type": "exact",
+          "char_index": 23,
+          "expected": "审",
+          "norm": "none",
+          "points": 1,
+          "desc": "24번째 글자 '審' -> '审'"
+        },
+        {
+          "id": "T07_C25",
+          "type": "exact",
+          "char_index": 24,
+          "expected": "查",
+          "norm": "none",
+          "points": 1,
+          "desc": "25번째 글자 '查' -> '查'"
+        },
+        {
+          "id": "T07_C26",
+          "type": "exact",
+          "expected": "义气广东台湾经济国际飞机导弹电脑图书馆压缩优质审查",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "25자 전체 간체자 문자열 일치"
+        }
+      ]
+    },
+    "T08": {
+      "id": "T08",
+      "category": "F3_자형변환",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "rare-token"
+      ],
+      "rationale": "일본어 신자체(新字体)에서 전통 구자체(舊字體/강희자전체) 변환. 저빈도 한자 임베딩 손실 검증",
+      "expected_marker_content": "鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍",
+      "checks": [
+        {
+          "id": "T08_C01",
+          "type": "exact",
+          "char_index": 0,
+          "expected": "鐵",
+          "norm": "none",
+          "points": 1,
+          "desc": "1번째 글자 신자체 '鉄' -> 구자체 '鐵'"
+        },
+        {
+          "id": "T08_C02",
+          "type": "exact",
+          "char_index": 1,
+          "expected": "驛",
+          "norm": "none",
+          "points": 1,
+          "desc": "2번째 글자 신자체 '駅' -> 구자체 '驛'"
+        },
+        {
+          "id": "T08_C03",
+          "type": "exact",
+          "char_index": 2,
+          "expected": "圖",
+          "norm": "none",
+          "points": 1,
+          "desc": "3번째 글자 신자체 '図' -> 구자체 '圖'"
+        },
+        {
+          "id": "T08_C04",
+          "type": "exact",
+          "char_index": 3,
+          "expected": "國",
+          "norm": "none",
+          "points": 1,
+          "desc": "4번째 글자 신자체 '国' -> 구자체 '國'"
+        },
+        {
+          "id": "T08_C05",
+          "type": "exact",
+          "char_index": 4,
+          "expected": "氣",
+          "norm": "none",
+          "points": 1,
+          "desc": "5번째 글자 신자체 '気' -> 구자체 '氣'"
+        },
+        {
+          "id": "T08_C06",
+          "type": "exact",
+          "char_index": 5,
+          "expected": "體",
+          "norm": "none",
+          "points": 1,
+          "desc": "6번째 글자 신자체 '体' -> 구자체 '體'"
+        },
+        {
+          "id": "T08_C07",
+          "type": "exact",
+          "char_index": 6,
+          "expected": "廣",
+          "norm": "none",
+          "points": 1,
+          "desc": "7번째 글자 신자체 '広' -> 구자체 '廣'"
+        },
+        {
+          "id": "T08_C08",
+          "type": "exact",
+          "char_index": 7,
+          "expected": "轉",
+          "norm": "none",
+          "points": 1,
+          "desc": "8번째 글자 신자체 '転' -> 구자체 '轉'"
+        },
+        {
+          "id": "T08_C09",
+          "type": "exact",
+          "char_index": 8,
+          "expected": "藝",
+          "norm": "none",
+          "points": 1,
+          "desc": "9번째 글자 신자체 '芸' -> 구자체 '藝'"
+        },
+        {
+          "id": "T08_C10",
+          "type": "exact",
+          "char_index": 9,
+          "expected": "傳",
+          "norm": "none",
+          "points": 1,
+          "desc": "10번째 글자 신자체 '伝' -> 구자체 '傳'"
+        },
+        {
+          "id": "T08_C11",
+          "type": "exact",
+          "char_index": 10,
+          "expected": "單",
+          "norm": "none",
+          "points": 1,
+          "desc": "11번째 글자 신자체 '単' -> 구자체 '單'"
+        },
+        {
+          "id": "T08_C12",
+          "type": "exact",
+          "char_index": 11,
+          "expected": "賣",
+          "norm": "none",
+          "points": 1,
+          "desc": "12번째 글자 신자체 '売' -> 구자체 '賣'"
+        },
+        {
+          "id": "T08_C13",
+          "type": "exact",
+          "char_index": 12,
+          "expected": "會",
+          "norm": "none",
+          "points": 1,
+          "desc": "13번째 글자 신자체 '会' -> 구자체 '會'"
+        },
+        {
+          "id": "T08_C14",
+          "type": "exact",
+          "char_index": 13,
+          "expected": "學",
+          "norm": "none",
+          "points": 1,
+          "desc": "14번째 글자 신자체 '学' -> 구자체 '學'"
+        },
+        {
+          "id": "T08_C15",
+          "type": "exact",
+          "char_index": 14,
+          "expected": "寫",
+          "norm": "none",
+          "points": 1,
+          "desc": "15번째 글자 신자체 '写' -> 구자체 '寫'"
+        },
+        {
+          "id": "T08_C16",
+          "type": "exact",
+          "char_index": 15,
+          "expected": "當",
+          "norm": "none",
+          "points": 1,
+          "desc": "16번째 글자 신자체 '当' -> 구자체 '當'"
+        },
+        {
+          "id": "T08_C17",
+          "type": "exact",
+          "char_index": 16,
+          "expected": "壽",
+          "norm": "none",
+          "points": 1,
+          "desc": "17번째 글자 신자체 '寿' -> 구자체 '壽'"
+        },
+        {
+          "id": "T08_C18",
+          "type": "exact",
+          "char_index": 17,
+          "expected": "拔",
+          "norm": "none",
+          "points": 1,
+          "desc": "18번째 글자 신자체 '抜' -> 구자체 '拔'"
+        },
+        {
+          "id": "T08_C19",
+          "type": "exact",
+          "char_index": 18,
+          "expected": "步",
+          "norm": "none",
+          "points": 1,
+          "desc": "19번째 글자 신자체 '歩' -> 구자체 '步'"
+        },
+        {
+          "id": "T08_C20",
+          "type": "exact",
+          "char_index": 19,
+          "expected": "惠",
+          "norm": "none",
+          "points": 1,
+          "desc": "20번째 글자 신자체 '恵' -> 구자체 '惠'"
+        },
+        {
+          "id": "T08_C21",
+          "type": "exact",
+          "char_index": 20,
+          "expected": "佛",
+          "norm": "none",
+          "points": 1,
+          "desc": "21번째 글자 신자체 '仏' -> 구자체 '佛'"
+        },
+        {
+          "id": "T08_C22",
+          "type": "exact",
+          "char_index": 21,
+          "expected": "禮",
+          "norm": "none",
+          "points": 1,
+          "desc": "22번째 글자 신자체 '礼' -> 구자체 '禮'"
+        },
+        {
+          "id": "T08_C23",
+          "type": "exact",
+          "char_index": 22,
+          "expected": "瀧",
+          "norm": "none",
+          "points": 1,
+          "desc": "23번째 글자 신자체 '滝' -> 구자체 '瀧'"
+        },
+        {
+          "id": "T08_C24",
+          "type": "exact",
+          "char_index": 23,
+          "expected": "櫻",
+          "norm": "none",
+          "points": 1,
+          "desc": "24번째 글자 신자체 '桜' -> 구자체 '櫻'"
+        },
+        {
+          "id": "T08_C25",
+          "type": "exact",
+          "char_index": 24,
+          "expected": "龍",
+          "norm": "none",
+          "points": 1,
+          "desc": "25번째 글자 신자체 '竜' -> 구자체 '龍'"
+        },
+        {
+          "id": "T08_C26",
+          "type": "exact",
+          "expected": "鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "25자 전체 구자체 문자열 일치"
+        }
+      ]
+    },
+    "T09": {
+      "id": "T09",
+      "category": "F3_자형변환",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "전통 구자체(한국 정자체)에서 현대 일본 신자체로의 축약 변환. 양자화 모델의 일본 상용한자 규격 준수 여부",
+      "expected_marker_content": "鉄駅図国気体広転芸伝単売会学写当寿抜歩恵仏礼滝桜竜",
+      "checks": [
+        {
+          "id": "T09_C01",
+          "type": "exact",
+          "char_index": 0,
+          "expected": "鉄",
+          "norm": "none",
+          "points": 1,
+          "desc": "1번째 글자 구자체 '鐵' -> 신자체 '鉄'"
+        },
+        {
+          "id": "T09_C02",
+          "type": "exact",
+          "char_index": 1,
+          "expected": "駅",
+          "norm": "none",
+          "points": 1,
+          "desc": "2번째 글자 구자체 '驛' -> 신자체 '駅'"
+        },
+        {
+          "id": "T09_C03",
+          "type": "exact",
+          "char_index": 2,
+          "expected": "図",
+          "norm": "none",
+          "points": 1,
+          "desc": "3번째 글자 구자체 '圖' -> 신자체 '図'"
+        },
+        {
+          "id": "T09_C04",
+          "type": "exact",
+          "char_index": 3,
+          "expected": "国",
+          "norm": "none",
+          "points": 1,
+          "desc": "4번째 글자 구자체 '國' -> 신자체 '国'"
+        },
+        {
+          "id": "T09_C05",
+          "type": "exact",
+          "char_index": 4,
+          "expected": "気",
+          "norm": "none",
+          "points": 1,
+          "desc": "5번째 글자 구자체 '氣' -> 신자체 '気'"
+        },
+        {
+          "id": "T09_C06",
+          "type": "exact",
+          "char_index": 5,
+          "expected": "体",
+          "norm": "none",
+          "points": 1,
+          "desc": "6번째 글자 구자체 '體' -> 신자체 '体'"
+        },
+        {
+          "id": "T09_C07",
+          "type": "exact",
+          "char_index": 6,
+          "expected": "広",
+          "norm": "none",
+          "points": 1,
+          "desc": "7번째 글자 구자체 '廣' -> 신자체 '広'"
+        },
+        {
+          "id": "T09_C08",
+          "type": "exact",
+          "char_index": 7,
+          "expected": "転",
+          "norm": "none",
+          "points": 1,
+          "desc": "8번째 글자 구자체 '轉' -> 신자체 '転'"
+        },
+        {
+          "id": "T09_C09",
+          "type": "exact",
+          "char_index": 8,
+          "expected": "芸",
+          "norm": "none",
+          "points": 1,
+          "desc": "9번째 글자 구자체 '藝' -> 신자체 '芸'"
+        },
+        {
+          "id": "T09_C10",
+          "type": "exact",
+          "char_index": 9,
+          "expected": "伝",
+          "norm": "none",
+          "points": 1,
+          "desc": "10번째 글자 구자체 '傳' -> 신자체 '伝'"
+        },
+        {
+          "id": "T09_C11",
+          "type": "exact",
+          "char_index": 10,
+          "expected": "単",
+          "norm": "none",
+          "points": 1,
+          "desc": "11번째 글자 구자체 '單' -> 신자체 '単'"
+        },
+        {
+          "id": "T09_C12",
+          "type": "exact",
+          "char_index": 11,
+          "expected": "売",
+          "norm": "none",
+          "points": 1,
+          "desc": "12번째 글자 구자체 '賣' -> 신자체 '売'"
+        },
+        {
+          "id": "T09_C13",
+          "type": "exact",
+          "char_index": 12,
+          "expected": "会",
+          "norm": "none",
+          "points": 1,
+          "desc": "13번째 글자 구자체 '會' -> 신자체 '会'"
+        },
+        {
+          "id": "T09_C14",
+          "type": "exact",
+          "char_index": 13,
+          "expected": "学",
+          "norm": "none",
+          "points": 1,
+          "desc": "14번째 글자 구자체 '學' -> 신자체 '学'"
+        },
+        {
+          "id": "T09_C15",
+          "type": "exact",
+          "char_index": 14,
+          "expected": "写",
+          "norm": "none",
+          "points": 1,
+          "desc": "15번째 글자 구자체 '寫' -> 신자체 '写'"
+        },
+        {
+          "id": "T09_C16",
+          "type": "exact",
+          "char_index": 15,
+          "expected": "当",
+          "norm": "none",
+          "points": 1,
+          "desc": "16번째 글자 구자체 '當' -> 신자체 '当'"
+        },
+        {
+          "id": "T09_C17",
+          "type": "exact",
+          "char_index": 16,
+          "expected": "寿",
+          "norm": "none",
+          "points": 1,
+          "desc": "17번째 글자 구자체 '壽' -> 신자체 '寿'"
+        },
+        {
+          "id": "T09_C18",
+          "type": "exact",
+          "char_index": 17,
+          "expected": "抜",
+          "norm": "none",
+          "points": 1,
+          "desc": "18번째 글자 구자체 '拔' -> 신자체 '抜'"
+        },
+        {
+          "id": "T09_C19",
+          "type": "exact",
+          "char_index": 18,
+          "expected": "歩",
+          "norm": "none",
+          "points": 1,
+          "desc": "19번째 글자 구자체 '步' -> 신자체 '歩'"
+        },
+        {
+          "id": "T09_C20",
+          "type": "exact",
+          "char_index": 19,
+          "expected": "恵",
+          "norm": "none",
+          "points": 1,
+          "desc": "20번째 글자 구자체 '惠' -> 신자체 '恵'"
+        },
+        {
+          "id": "T09_C21",
+          "type": "exact",
+          "char_index": 20,
+          "expected": "仏",
+          "norm": "none",
+          "points": 1,
+          "desc": "21번째 글자 구자체 '佛' -> 신자체 '仏'"
+        },
+        {
+          "id": "T09_C22",
+          "type": "exact",
+          "char_index": 21,
+          "expected": "礼",
+          "norm": "none",
+          "points": 1,
+          "desc": "22번째 글자 구자체 '禮' -> 신자체 '礼'"
+        },
+        {
+          "id": "T09_C23",
+          "type": "exact",
+          "char_index": 22,
+          "expected": "滝",
+          "norm": "none",
+          "points": 1,
+          "desc": "23번째 글자 구자체 '瀧' -> 신자체 '滝'"
+        },
+        {
+          "id": "T09_C24",
+          "type": "exact",
+          "char_index": 23,
+          "expected": "桜",
+          "norm": "none",
+          "points": 1,
+          "desc": "24번째 글자 구자체 '櫻' -> 신자체 '桜'"
+        },
+        {
+          "id": "T09_C25",
+          "type": "exact",
+          "char_index": 24,
+          "expected": "竜",
+          "norm": "none",
+          "points": 1,
+          "desc": "25번째 글자 구자체 '龍' -> 신자체 '竜'"
+        },
+        {
+          "id": "T09_C26",
+          "type": "exact",
+          "expected": "鉄駅図国気体広転芸伝単売会学写当寿抜歩恵仏礼滝桜竜",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "25자 전체 신자체 문자열 일치"
+        }
+      ]
+    },
+    "T10": {
+      "id": "T10",
+      "category": "F3_자형변환",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한중일 복합 전문 학술 어휘의 정밀 자형 간체화 매핑. 부분적 불완전 변환 잔존 감지",
+      "expected_marker_content": "观点发动机总体规划实践与创新发展驱动战略导向标准化",
+      "checks": [
+        {
+          "id": "T10_C01",
+          "type": "exact",
+          "char_index": 0,
+          "expected": "观",
+          "norm": "none",
+          "points": 1,
+          "desc": "1번째 글자 복합어 '觀' -> 간체 '观'"
+        },
+        {
+          "id": "T10_C02",
+          "type": "exact",
+          "char_index": 1,
+          "expected": "点",
+          "norm": "none",
+          "points": 1,
+          "desc": "2번째 글자 복합어 '點' -> 간체 '点'"
+        },
+        {
+          "id": "T10_C03",
+          "type": "exact",
+          "char_index": 2,
+          "expected": "发",
+          "norm": "none",
+          "points": 1,
+          "desc": "3번째 글자 복합어 '發' -> 간체 '发'"
+        },
+        {
+          "id": "T10_C04",
+          "type": "exact",
+          "char_index": 3,
+          "expected": "动",
+          "norm": "none",
+          "points": 1,
+          "desc": "4번째 글자 복합어 '動' -> 간체 '动'"
+        },
+        {
+          "id": "T10_C05",
+          "type": "exact",
+          "char_index": 4,
+          "expected": "机",
+          "norm": "none",
+          "points": 1,
+          "desc": "5번째 글자 복합어 '機' -> 간체 '机'"
+        },
+        {
+          "id": "T10_C06",
+          "type": "exact",
+          "char_index": 5,
+          "expected": "总",
+          "norm": "none",
+          "points": 1,
+          "desc": "6번째 글자 복합어 '總' -> 간체 '总'"
+        },
+        {
+          "id": "T10_C07",
+          "type": "exact",
+          "char_index": 6,
+          "expected": "体",
+          "norm": "none",
+          "points": 1,
+          "desc": "7번째 글자 복합어 '體' -> 간체 '体'"
+        },
+        {
+          "id": "T10_C08",
+          "type": "exact",
+          "char_index": 7,
+          "expected": "规",
+          "norm": "none",
+          "points": 1,
+          "desc": "8번째 글자 복합어 '規' -> 간체 '规'"
+        },
+        {
+          "id": "T10_C09",
+          "type": "exact",
+          "char_index": 8,
+          "expected": "划",
+          "norm": "none",
+          "points": 1,
+          "desc": "9번째 글자 복합어 '劃' -> 간체 '划'"
+        },
+        {
+          "id": "T10_C10",
+          "type": "exact",
+          "char_index": 9,
+          "expected": "实",
+          "norm": "none",
+          "points": 1,
+          "desc": "10번째 글자 복합어 '實' -> 간체 '实'"
+        },
+        {
+          "id": "T10_C11",
+          "type": "exact",
+          "char_index": 10,
+          "expected": "践",
+          "norm": "none",
+          "points": 1,
+          "desc": "11번째 글자 복합어 '踐' -> 간체 '践'"
+        },
+        {
+          "id": "T10_C12",
+          "type": "exact",
+          "char_index": 11,
+          "expected": "与",
+          "norm": "none",
+          "points": 1,
+          "desc": "12번째 글자 복합어 '與' -> 간체 '与'"
+        },
+        {
+          "id": "T10_C13",
+          "type": "exact",
+          "char_index": 12,
+          "expected": "创",
+          "norm": "none",
+          "points": 1,
+          "desc": "13번째 글자 복합어 '創' -> 간체 '创'"
+        },
+        {
+          "id": "T10_C14",
+          "type": "exact",
+          "char_index": 13,
+          "expected": "新",
+          "norm": "none",
+          "points": 1,
+          "desc": "14번째 글자 복합어 '新' -> 간체 '新'"
+        },
+        {
+          "id": "T10_C15",
+          "type": "exact",
+          "char_index": 14,
+          "expected": "发",
+          "norm": "none",
+          "points": 1,
+          "desc": "15번째 글자 복합어 '發' -> 간체 '发'"
+        },
+        {
+          "id": "T10_C16",
+          "type": "exact",
+          "char_index": 15,
+          "expected": "展",
+          "norm": "none",
+          "points": 1,
+          "desc": "16번째 글자 복합어 '展' -> 간체 '展'"
+        },
+        {
+          "id": "T10_C17",
+          "type": "exact",
+          "char_index": 16,
+          "expected": "驱",
+          "norm": "none",
+          "points": 1,
+          "desc": "17번째 글자 복합어 '驅' -> 간체 '驱'"
+        },
+        {
+          "id": "T10_C18",
+          "type": "exact",
+          "char_index": 17,
+          "expected": "动",
+          "norm": "none",
+          "points": 1,
+          "desc": "18번째 글자 복합어 '動' -> 간체 '动'"
+        },
+        {
+          "id": "T10_C19",
+          "type": "exact",
+          "char_index": 18,
+          "expected": "战",
+          "norm": "none",
+          "points": 1,
+          "desc": "19번째 글자 복합어 '戰' -> 간체 '战'"
+        },
+        {
+          "id": "T10_C20",
+          "type": "exact",
+          "char_index": 19,
+          "expected": "略",
+          "norm": "none",
+          "points": 1,
+          "desc": "20번째 글자 복합어 '略' -> 간체 '略'"
+        },
+        {
+          "id": "T10_C21",
+          "type": "exact",
+          "char_index": 20,
+          "expected": "导",
+          "norm": "none",
+          "points": 1,
+          "desc": "21번째 글자 복합어 '導' -> 간체 '导'"
+        },
+        {
+          "id": "T10_C22",
+          "type": "exact",
+          "char_index": 21,
+          "expected": "向",
+          "norm": "none",
+          "points": 1,
+          "desc": "22번째 글자 복합어 '向' -> 간체 '向'"
+        },
+        {
+          "id": "T10_C23",
+          "type": "exact",
+          "char_index": 22,
+          "expected": "标",
+          "norm": "none",
+          "points": 1,
+          "desc": "23번째 글자 복합어 '標' -> 간체 '标'"
+        },
+        {
+          "id": "T10_C24",
+          "type": "exact",
+          "char_index": 23,
+          "expected": "准",
+          "norm": "none",
+          "points": 1,
+          "desc": "24번째 글자 복합어 '準' -> 간체 '准'"
+        },
+        {
+          "id": "T10_C25",
+          "type": "exact",
+          "char_index": 24,
+          "expected": "化",
+          "norm": "none",
+          "points": 1,
+          "desc": "25번째 글자 복합어 '化' -> 간체 '化'"
+        },
+        {
+          "id": "T10_C26",
+          "type": "exact",
+          "expected": "观点发动机总体规划实践与创新发展驱动战略导向标准化",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "25자 전체 간체 복합어 문자열 일치"
+        }
+      ]
+    },
+    "T11": {
+      "id": "T11",
+      "category": "F6_문자열정밀조작",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한글-한자 혼용 텍스트의 글자 수 계측, 인덱싱, 역순 출력 및 특정 글자 카운팅 정밀도 검증",
+      "expected_marker_content": "1. 총글자수: 32\n2. 7번째: 民\n3. 15번째: 민\n4. 한글국빈도: 3\n5. 한자國빈도: 2\n6. 역순: 다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대",
+      "checks": [
+        {
+          "id": "T11_C1",
+          "type": "numeric",
+          "expected": 32,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "총 글자 수 일치",
+          "extract_regex": "1\\.\\s*총글자수:\\s*(\\d+)"
+        },
+        {
+          "id": "T11_C2",
+          "type": "contains",
+          "expected": "7번째: 民",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "7번째 글자 일치"
+        },
+        {
+          "id": "T11_C3",
+          "type": "contains",
+          "expected": "15번째: 민",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "15번째 글자 일치"
+        },
+        {
+          "id": "T11_C4",
+          "type": "numeric",
+          "expected": 3,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "한글 '국' 빈도",
+          "extract_regex": "4\\.\\s*한글국빈도:\\s*(\\d+)"
+        },
+        {
+          "id": "T11_C5",
+          "type": "numeric",
+          "expected": 2,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "한자 '國' 빈도",
+          "extract_regex": "5\\.\\s*한자國빈도:\\s*(\\d+)"
+        },
+        {
+          "id": "T11_C6",
+          "type": "contains",
+          "expected": "다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "역순 문자열 일치"
+        }
+      ]
+    },
+    "T12": {
+      "id": "T12",
+      "category": "F6_문자열정밀조작",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "일본어 혼합(가타카나, 히라가나, 한자) 유니코드 슬라이싱 및 특정 조사 계측 정밀도",
+      "expected_marker_content": "1. 길이: 29\n2. 9번째: 桜\n3. 18번째: く\n4. の빈도: 2\n5. 역순: たしまし来到が節季の春く咲くし美がラクサ桜のウョキウト京東",
+      "checks": [
+        {
+          "id": "T12_C1",
+          "type": "numeric",
+          "expected": 29,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "문자열 길이",
+          "extract_regex": "1\\.\\s*길이:\\s*(\\d+)"
+        },
+        {
+          "id": "T12_C2",
+          "type": "contains",
+          "expected": "9번째: 桜",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "9번째 글자"
+        },
+        {
+          "id": "T12_C3",
+          "type": "contains",
+          "expected": "18번째: く",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "18번째 글자"
+        },
+        {
+          "id": "T12_C4",
+          "type": "numeric",
+          "expected": 2,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "조사 'の' 빈도수",
+          "extract_regex": "4\\.\\s*の빈도:\\s*(\\d+)"
+        },
+        {
+          "id": "T12_C5",
+          "type": "contains",
+          "expected": "たしまし来到が節季の春く咲くし美がラクサ桜のウョキウト京東",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "역순 문자열"
+        }
+      ]
+    },
+    "T13": {
+      "id": "T13",
+      "category": "F6_문자열정밀조작",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "중국어 간체 성어 4개 결합열의 짝수 인덱스 추출 및 역순 조작. 다단계 인덱스 연산 능력 검증",
+      "expected_marker_content": "1. 길이: 24\n2. 8번째: 下\n3. 짝수열: 里行于下纳川容大安危奢俭\n4. 大빈도: 1\n5. 역순: 俭以奢戒危思安居大乃容有川百纳海下足于始行之里千",
+      "checks": [
+        {
+          "id": "T13_C1",
+          "type": "numeric",
+          "expected": 24,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "총 글자수",
+          "extract_regex": "1\\.\\s*길이:\\s*(\\d+)"
+        },
+        {
+          "id": "T13_C2",
+          "type": "contains",
+          "expected": "8번째: 下",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "8번째 글자"
+        },
+        {
+          "id": "T13_C3",
+          "type": "contains",
+          "expected": "里行于下纳川容大安危奢俭",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "짝수 인덱스 추출열"
+        },
+        {
+          "id": "T13_C4",
+          "type": "numeric",
+          "expected": 1,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "'大' 글자 빈도",
+          "extract_regex": "4\\.\\s*大빈도:\\s*(\\d+)"
+        },
+        {
+          "id": "T13_C5",
+          "type": "contains",
+          "expected": "俭以奢戒危思安居大乃容有川百纳海下足于始行之里千",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "역순 문자열"
+        }
+      ]
+    },
+    "T14": {
+      "id": "T14",
+      "category": "F6_문자열정밀조작",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한글-가나-한자 다국어 복합 문자열의 구간 슬라이스 및 가타카나 'ン' 빈도 계산",
+      "expected_marker_content": "1. 길이: 24\n2. 부분문자열: ル北京ペキン平壌ピョ\n3. ン빈도: 3\n4. 역순: うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서",
+      "checks": [
+        {
+          "id": "T14_C1",
+          "type": "numeric",
+          "expected": 24,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "문자열 총 길이",
+          "extract_regex": "1\\.\\s*길이:\\s*(\\d+)"
+        },
+        {
+          "id": "T14_C2",
+          "type": "contains",
+          "expected": "ル北京ペキン平壌ピョ",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "5~14번째 부분 슬라이스"
+        },
+        {
+          "id": "T14_C3",
+          "type": "numeric",
+          "expected": 3,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "'ン' 빈도",
+          "extract_regex": "3\\.\\s*ン빈도:\\s*(\\d+)"
+        },
+        {
+          "id": "T14_C4",
+          "type": "contains",
+          "expected": "うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "역순 문자열"
+        }
+      ]
+    },
+    "T15": {
+      "id": "T15",
+      "category": "F6_문자열정밀조작",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "기호와 한자가 교차하는 복합 문자열에서 특수문자 필터링 및 10간 한자만 정밀 추출",
+      "expected_marker_content": "1. 총길이: 19\n2. 10번째: ★\n3. 십간추출: 甲乙丙丁戊己庚辛壬癸\n4. 역순: 癸◎壬■辛▲庚◆己★戊}丁{丙]乙[甲",
+      "checks": [
+        {
+          "id": "T15_C1",
+          "type": "numeric",
+          "expected": 19,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "총 길이",
+          "extract_regex": "1\\.\\s*총길이:\\s*(\\d+)"
+        },
+        {
+          "id": "T15_C2",
+          "type": "contains",
+          "expected": "10번째: ★",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "10번째 문자"
+        },
+        {
+          "id": "T15_C3",
+          "type": "contains",
+          "expected": "십간추출: 甲乙丙丁戊己庚辛壬癸",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "십간 한자 추출 일치"
+        },
+        {
+          "id": "T15_C4",
+          "type": "contains",
+          "expected": "癸◎壬■辛▲庚◆己★戊}丁{丙]乙[甲",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "역순 문자열"
+        }
+      ]
+    },
+    "T16": {
+      "id": "T16",
+      "category": "F7_장문정확인용",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "300자 이상 한국어 고문헌 해설문에서 프로그램 슬라이스 구간을 토큰 왜곡 없이 100% 원문 그대로 복제 인용하는 능력",
+      "expected_marker_content": "구간A: 하지 아니하므로, 어리석은 백성이 이르고자 하는 바가 있어도 마침내 제 뜻\n구간B: 자를 만드노니, 모든 사람으로 하여금 쉽게 익혀 날마다 씀에 편안하게 하고자 할 따",
+      "checks": [
+        {
+          "id": "T16_C1",
+          "type": "contains",
+          "expected": "하지 아니하므로, 어리석은 백성이 이르고자 하는 바가 있어도 마침내 제 뜻",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간A 정확 인용"
+        },
+        {
+          "id": "T16_C2",
+          "type": "char_count",
+          "expected": 41,
+          "extract_regex": "구간A:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간A 글자수 일치"
+        },
+        {
+          "id": "T16_C3",
+          "type": "contains",
+          "expected": "자를 만드노니, 모든 사람으로 하여금 쉽게 익혀 날마다 씀에 편안하게 하고자 할 따",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간B 정확 인용"
+        },
+        {
+          "id": "T16_C4",
+          "type": "char_count",
+          "expected": 46,
+          "extract_regex": "구간B:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간B 글자수 일치"
+        }
+      ]
+    },
+    "T17": {
+      "id": "T17",
+      "category": "F7_장문정확인용",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "일본어 근대 소설 명문에서 구두점 및 조사 왜곡 없이 정확한 슬라이스 구간을 복사 인용하는 능력",
+      "expected_marker_content": "구간A: と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶し\n구간B: 一番獰悪な種族であったそうだ。この書生というのは時々我々を捕えて煮て食うという話である。し",
+      "checks": [
+        {
+          "id": "T17_C1",
+          "type": "contains",
+          "expected": "と見当がつかぬ。何でも薄暗いじめじめした所でニャーニャー泣いていた事だけは記憶し",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간A 정확 인용"
+        },
+        {
+          "id": "T17_C2",
+          "type": "char_count",
+          "expected": 40,
+          "extract_regex": "구간A:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간A 글자수 일치"
+        },
+        {
+          "id": "T17_C3",
+          "type": "contains",
+          "expected": "一番獰悪な種族であったそうだ。この書生というのは時々我々を捕えて煮て食うという話である。し",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간B 정확 인용"
+        },
+        {
+          "id": "T17_C4",
+          "type": "char_count",
+          "expected": 45,
+          "extract_regex": "구간B:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간B 글자수 일치"
+        }
+      ]
+    },
+    "T18": {
+      "id": "T18",
+      "category": "F7_장문정확인용",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "rare-token"
+      ],
+      "rationale": "중국 예기 대동편 원문에서 간체/번체 혼동 및 구두점 누락 없이 정밀 구간 인용",
+      "expected_marker_content": "구간A: 独子其子，使老有所终，壮有所用，幼有所长，矜、寡、孤、独、废疾者皆有所养，男有分，女有归。\n구간B: 外户而不闭，是谓大同。今大道既隐，天下为家，各亲其亲，各子其子，货力为己，大人世及以为礼，城郭沟",
+      "checks": [
+        {
+          "id": "T18_C1",
+          "type": "contains",
+          "expected": "独子其子，使老有所终，壮有所用，幼有所长，矜、寡、孤、独、废疾者皆有所养，男有分，女有归。",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간A 원문 정확 인용"
+        },
+        {
+          "id": "T18_C2",
+          "type": "char_count",
+          "expected": 45,
+          "extract_regex": "구간A:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간A 글자수 일치"
+        },
+        {
+          "id": "T18_C3",
+          "type": "contains",
+          "expected": "外户而不闭，是谓大同。今大道既隐，天下为家，各亲其亲，各子其子，货力为己，大人世及以为礼，城郭沟",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간B 원문 정확 인용"
+        },
+        {
+          "id": "T18_C4",
+          "type": "char_count",
+          "expected": 48,
+          "extract_regex": "구간B:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간B 글자수 일치"
+        }
+      ]
+    },
+    "T19": {
+      "id": "T19",
+      "category": "F7_장문정확인용",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "기술 표준 규격 전문에서 영문 약어, 괄호, 기술 용어가 포함된 장문 슬라이스 무손실 추출",
+      "expected_marker_content": "구간A: 하고 엣지 디바이스에서의 전력 소모를 최소화하기 위해 필수적으로 요구되는 공학적\n구간B: INT8) 또는 4비트 부동소수점(FP4) 형식으로 변환할 때, 수치 표현 범위의 축소로",
+      "checks": [
+        {
+          "id": "T19_C1",
+          "type": "contains",
+          "expected": "하고 엣지 디바이스에서의 전력 소모를 최소화하기 위해 필수적으로 요구되는 공학적",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간A 정확 일치"
+        },
+        {
+          "id": "T19_C2",
+          "type": "char_count",
+          "expected": 44,
+          "extract_regex": "구간A:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간A 글자수"
+        },
+        {
+          "id": "T19_C3",
+          "type": "contains",
+          "expected": "INT8) 또는 4비트 부동소수점(FP4) 형식으로 변환할 때, 수치 표현 범위의 축소로",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간B 정확 일치"
+        },
+        {
+          "id": "T19_C4",
+          "type": "char_count",
+          "expected": 49,
+          "extract_regex": "구간B:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간B 글자수"
+        }
+      ]
+    },
+    "T20": {
+      "id": "T20",
+      "category": "F7_장문정확인용",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "법조문 문단의 정확한 구간 인용 및 어미/조사 생략 여부 검증",
+      "expected_marker_content": "구간A: 인정보처리자는 개인정보를 당초 수집 목적의 범위를 초과하여 이용하거나 제3자에게\n구간B: 다른 법률에 특별한 규정이 존재하는 경우에는 예외적으로 수집 목적 외의 용도로 이용하거나",
+      "checks": [
+        {
+          "id": "T20_C1",
+          "type": "contains",
+          "expected": "인정보처리자는 개인정보를 당초 수집 목적의 범위를 초과하여 이용하거나 제3자에게",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간A 법조문 인용"
+        },
+        {
+          "id": "T20_C2",
+          "type": "char_count",
+          "expected": 44,
+          "extract_regex": "구간A:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간A 글자수"
+        },
+        {
+          "id": "T20_C3",
+          "type": "contains",
+          "expected": "다른 법률에 특별한 규정이 존재하는 경우에는 예외적으로 수집 목적 외의 용도로 이용하거나",
+          "norm": "none",
+          "points": 2,
+          "desc": "구간B 법조문 인용"
+        },
+        {
+          "id": "T20_C4",
+          "type": "char_count",
+          "expected": 49,
+          "extract_regex": "구간B:\\s*([^\\r\\n]+)",
+          "norm": "none",
+          "points": 1,
+          "desc": "구간B 글자수"
+        }
+      ]
+    },
+    "T21": {
+      "id": "T21",
+      "category": "F8_출력형식제약",
+      "difficulty": 2,
+      "tags": [
+        "format-sensitive",
+        "quant-sensitive"
+      ],
+      "rationale": "엄격한 JSON 스키마 필드 키, 데이터 타입(문자열, 정수, 불리언, 부동소수점, 배열) 준수 여부",
+      "expected_marker_content": "{\n  \"task_id\": \"TASK-4081\",\n  \"priority\": 3,\n  \"is_active\": true,\n  \"tags\": [\"CJK\", \"FLIP\", \"TEST\"],\n  \"score_ratio\": 0.875,\n  \"summary\": \"동일 하네스 테스트 완료\"\n}",
+      "checks": [
+        {
+          "id": "T21_C1",
+          "type": "json_schema",
+          "expected": "{\"type\": \"object\", \"required\": [\"task_id\", \"priority\", \"is_active\", \"tags\", \"score_ratio\", \"summary\"], \"properties\": {\"task_id\": {\"type\": \"string\", \"const\": \"TASK-4081\"}, \"priority\": {\"type\": \"integer\", \"const\": 3}, \"is_active\": {\"type\": \"boolean\", \"const\": true}, \"tags\": {\"type\": \"array\", \"minItems\": 3, \"maxItems\": 3}, \"score_ratio\": {\"type\": \"number\"}, \"summary\": {\"type\": \"string\"}}}",
+          "norm": "none",
+          "points": 2,
+          "desc": "JSON 스키마 유효성 및 필드 타입 일치"
+        },
+        {
+          "id": "T21_C2",
+          "type": "contains",
+          "expected": "\"task_id\": \"TASK-4081\"",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "task_id 정확 일치"
+        },
+        {
+          "id": "T21_C3",
+          "type": "contains",
+          "expected": "\"priority\": 3",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "priority 정확 일치"
+        },
+        {
+          "id": "T21_C4",
+          "type": "contains",
+          "expected": "\"is_active\": true",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "is_active boolean"
+        },
+        {
+          "id": "T21_C5",
+          "type": "contains",
+          "expected": "[\"CJK\", \"FLIP\", \"TEST\"]",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "tags 배열 일치"
+        }
+      ]
+    },
+    "T22": {
+      "id": "T22",
+      "category": "F8_출력형식제약",
+      "difficulty": 2,
+      "tags": [
+        "format-sensitive",
+        "quant-sensitive"
+      ],
+      "rationale": "정확한 3문장 개수 제약 및 한자/영문 토큰의 유출 방지(음수 제약 조건 준수)",
+      "expected_marker_content": "인공지능 모델의 미세한 성능 차이를 규명하기 위해서는 체계적인 평가 도구가 필요합니다. 정밀도 높은 검증 체계는 프로바이더 간의 출력 편차를 객관적으로 측정합니다. 이를 통해 사용자는 시스템의 신뢰성을 확보하고 최적의 환경을 선택할 수 있습니다.",
+      "checks": [
+        {
+          "id": "T22_C1",
+          "type": "regex",
+          "expected": "^([^.\\n]+\\.){3}$",
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "정확히 3문장 마침표 종결"
+        },
+        {
+          "id": "T22_C2",
+          "type": "regex",
+          "expected": "^[^\\u4e00-\\u9fff\\u3400-\\u4dbf\\uf900-\\ufaff]+$",
+          "norm": "none",
+          "points": 2,
+          "desc": "한자(漢字) 절대 불포함"
+        },
+        {
+          "id": "T22_C3",
+          "type": "regex",
+          "expected": "^[^A-Za-z]+$",
+          "norm": "none",
+          "points": 1,
+          "desc": "영문 알파벳 절대 불포함"
+        },
+        {
+          "id": "T22_C4",
+          "type": "contains",
+          "expected": "정밀도",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "필수 키워드 '정밀도' 포함"
+        },
+        {
+          "id": "T22_C5",
+          "type": "contains",
+          "expected": "신뢰성",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "필수 키워드 '신뢰성' 포함"
+        }
+      ]
+    },
+    "T23": {
+      "id": "T23",
+      "category": "F8_출력형식제약",
+      "difficulty": 2,
+      "tags": [
+        "format-sensitive",
+        "quant-sensitive"
+      ],
+      "rationale": "헤더 포함 정확히 4행, 4열의 순수 CSV 데이터 포맷 출력 및 수치 데이터 포맷팅",
+      "expected_marker_content": "id,item_name,quantity,unit_price\n101,메모리반도체,50,12000.5\n102,그래픽카드,20,850000.0\n103,중앙처리장치,35,430000.0",
+      "checks": [
+        {
+          "id": "T23_C1",
+          "type": "contains",
+          "expected": "id,item_name,quantity,unit_price",
+          "norm": "none",
+          "points": 1,
+          "desc": "CSV 헤더 일치"
+        },
+        {
+          "id": "T23_C2",
+          "type": "contains",
+          "expected": "101,메모리반도체,50,12000.5",
+          "norm": "none",
+          "points": 1,
+          "desc": "2행 데이터 일치"
+        },
+        {
+          "id": "T23_C3",
+          "type": "contains",
+          "expected": "102,그래픽카드,20,850000.0",
+          "norm": "none",
+          "points": 1,
+          "desc": "3행 데이터 일치"
+        },
+        {
+          "id": "T23_C4",
+          "type": "contains",
+          "expected": "103,중앙처리장치,35,430000.0",
+          "norm": "none",
+          "points": 1,
+          "desc": "4행 데이터 일치"
+        },
+        {
+          "id": "T23_C5",
+          "type": "char_count",
+          "expected": 4,
+          "norm": "lines",
+          "points": 1,
+          "desc": "정확히 4개 행"
+        }
+      ]
+    },
+    "T24": {
+      "id": "T24",
+      "category": "F8_출력형식제약",
+      "difficulty": 2,
+      "tags": [
+        "format-sensitive",
+        "quant-sensitive"
+      ],
+      "rationale": "특정 구분 기호(::)를 사용한 단일 키-값 쌍 5행 포맷 및 한자 배제",
+      "expected_marker_content": "PROJECT::CJK플립테스트\nTARGET::프로바이더출력차이\nLOCALE::대한민국\nSTATUS::정상가동\nCOUNT::40",
+      "checks": [
+        {
+          "id": "T24_C1",
+          "type": "contains",
+          "expected": "PROJECT::CJK플립테스트",
+          "norm": "none",
+          "points": 1,
+          "desc": "PROJECT 라인"
+        },
+        {
+          "id": "T24_C2",
+          "type": "contains",
+          "expected": "TARGET::프로바이더출력차이",
+          "norm": "none",
+          "points": 1,
+          "desc": "TARGET 라인"
+        },
+        {
+          "id": "T24_C3",
+          "type": "contains",
+          "expected": "LOCALE::대한민국",
+          "norm": "none",
+          "points": 1,
+          "desc": "LOCALE 라인"
+        },
+        {
+          "id": "T24_C4",
+          "type": "contains",
+          "expected": "STATUS::정상가동",
+          "norm": "none",
+          "points": 1,
+          "desc": "STATUS 라인"
+        },
+        {
+          "id": "T24_C5",
+          "type": "contains",
+          "expected": "COUNT::40",
+          "norm": "none",
+          "points": 1,
+          "desc": "COUNT 라인"
+        }
+      ]
+    },
+    "T25": {
+      "id": "T25",
+      "category": "F8_출력형식제약",
+      "difficulty": 3,
+      "tags": [
+        "format-sensitive",
+        "quant-sensitive"
+      ],
+      "rationale": "중첩 JSON 객체 내 숫자 범위 및 리스트 객체 규격 검증",
+      "expected_marker_content": "{\n  \"status\": \"SUCCESS\",\n  \"metrics\": {\n    \"f1_score\": 0.942,\n    \"sample_count\": 200\n  },\n  \"eval_list\": [\n    {\"id\": \"E1\", \"passed\": true},\n    {\"id\": \"E2\", \"passed\": false}\n  ]\n}",
+      "checks": [
+        {
+          "id": "T25_C1",
+          "type": "json_schema",
+          "expected": "{\"type\": \"object\", \"required\": [\"status\", \"metrics\", \"eval_list\"], \"properties\": {\"status\": {\"type\": \"string\", \"const\": \"SUCCESS\"}, \"metrics\": {\"type\": \"object\", \"required\": [\"f1_score\", \"sample_count\"], \"properties\": {\"f1_score\": {\"type\": \"number\"}, \"sample_count\": {\"type\": \"integer\", \"const\": 200}}}, \"eval_list\": {\"type\": \"array\", \"minItems\": 2, \"maxItems\": 2}}}",
+          "norm": "none",
+          "points": 2,
+          "desc": "중첩 JSON 스키마 및 타입 유효성"
+        },
+        {
+          "id": "T25_C2",
+          "type": "contains",
+          "expected": "\"status\": \"SUCCESS\"",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "status 필드"
+        },
+        {
+          "id": "T25_C3",
+          "type": "contains",
+          "expected": "\"sample_count\": 200",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "sample_count 정수"
+        },
+        {
+          "id": "T25_C4",
+          "type": "contains",
+          "expected": "\"f1_score\": 0.942",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "f1_score 실수"
+        }
+      ]
+    },
+    "T26": {
+      "id": "T26",
+      "category": "F4_회귀번역",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한국어-일본어-한국어 회귀 번역 과정에서 특허 기술 어휘 보존율 및 문장 구조 복원력",
+      "expected_marker_content": "1단계(일본어): 本発明のディープラーニング推論エンジンは、重み量子化を通じてメモリ帯域幅のボトルネックを解決する。\n2단계(한국어회귀): 본 발명의 딥러닝 추론 엔진은 가중치 양자화를 통해 메모리 대역폭의 병목현상을 해결한다.",
+      "checks": [
+        {
+          "id": "T26_C1",
+          "type": "contains",
+          "expected": "ディープラーニング推論エンジン",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 추론엔진 용어"
+        },
+        {
+          "id": "T26_C2",
+          "type": "contains",
+          "expected": "重み量子化",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 가중치양자화 용어"
+        },
+        {
+          "id": "T26_C3",
+          "type": "contains",
+          "expected": "딥러닝 추론 엔진",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한국어 회귀 추론엔진 용어"
+        },
+        {
+          "id": "T26_C4",
+          "type": "contains",
+          "expected": "가중치 양자화",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "한국어 회귀 가중치양자화 용어"
+        },
+        {
+          "id": "T26_C5",
+          "type": "chrf",
+          "expected": "본 발명의 딥러닝 추론 엔진은 가중치 양자화를 통해 메모리 대역폭의 병목현상을 해결한다.",
+          "threshold": 0.7,
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "회귀문 chrF 유사도",
+          "extract_regex": "2단계\\(한국어회귀\\):\\s*([^\\r\\n]+)"
+        }
+      ]
+    },
+    "T27": {
+      "id": "T27",
+      "category": "F4_회귀번역",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한국어-중국어 간체-한국어 회귀 번역에서 계약서 법률 핵심 용어의 정보 누락 검증",
+      "expected_marker_content": "1단계(중국어): 接收方承担保密义务，若向第三方泄露，则承担损害赔偿责任。\n2단계(한국어회귀): 수령 당사자는 비밀유지 의무를 부담하며, 제3자에게 누설할 경우 손해배상 책임을 진다.",
+      "checks": [
+        {
+          "id": "T27_C1",
+          "type": "contains",
+          "expected": "保密义务",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "중국어 비밀유지의무"
+        },
+        {
+          "id": "T27_C2",
+          "type": "contains",
+          "expected": "损害赔偿责任",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "중국어 손해배상책임"
+        },
+        {
+          "id": "T27_C3",
+          "type": "contains",
+          "expected": "비밀유지 의무",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 비밀유지 의무"
+        },
+        {
+          "id": "T27_C4",
+          "type": "contains",
+          "expected": "손해배상 책임",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 손해배상 책임"
+        },
+        {
+          "id": "T27_C5",
+          "type": "chrf",
+          "expected": "수령 당사자는 비밀유지 의무를 부담하며 제3자에게 누설할 경우 손해배상 책임을 진다",
+          "threshold": 0.7,
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "회귀문 chrF 유사도",
+          "extract_regex": "2단계\\(한국어회귀\\):\\s*([^\\r\\n]+)"
+        }
+      ]
+    },
+    "T28": {
+      "id": "T28",
+      "category": "F4_회귀번역",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "의학 통계 전문 용어의 일본어 번역 및 한국어 원문 복원 정밀도",
+      "expected_marker_content": "1단계(일본어): 診断検査の感度と特異度が高いほど、偽陽性および偽陰性の発生率が著しく減少する。\n2단계(한국어회귀): 진단 검사의 민감도와 특이도가 높을수록 위양성 및 위음성의 발생률이 현저히 감소한다.",
+      "checks": [
+        {
+          "id": "T28_C1",
+          "type": "contains",
+          "expected": "感度と特異度",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 감도와 특이도"
+        },
+        {
+          "id": "T28_C2",
+          "type": "contains",
+          "expected": "偽陽性",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 위양성"
+        },
+        {
+          "id": "T28_C3",
+          "type": "contains",
+          "expected": "민감도와 특이도",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 민감도와 특이도"
+        },
+        {
+          "id": "T28_C4",
+          "type": "contains",
+          "expected": "위양성",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 위양성"
+        },
+        {
+          "id": "T28_C5",
+          "type": "chrf",
+          "expected": "진단 검사의 민감도와 특이도가 높을수록 위양성 및 위음성의 발생률이 현저히 감소한다",
+          "threshold": 0.7,
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "회귀문 chrF 유사도",
+          "extract_regex": "2단계\\(한국어회귀\\):\\s*([^\\r\\n]+)"
+        }
+      ]
+    },
+    "T29": {
+      "id": "T29",
+      "category": "F4_회귀번역",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "금융 파생상품 위험 고지 문장의 중국어 간체 및 한국어 역번역 정확도",
+      "expected_marker_content": "1단계(중국어): 因市场波动性扩大导致维持保证金不足时，可能在无事先通知的情况下被强制平仓。\n2단계(한국어회귀): 시장 변동성 확대로 인해 유지 증거금이 부족할 경우 사전 통보 없이 강제 청산될 수 있다.",
+      "checks": [
+        {
+          "id": "T29_C1",
+          "type": "contains",
+          "expected": "维持保证金",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "중국어 유지증거금"
+        },
+        {
+          "id": "T29_C2",
+          "type": "contains",
+          "expected": "强制平仓",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "중국어 강제청산"
+        },
+        {
+          "id": "T29_C3",
+          "type": "contains",
+          "expected": "유지 증거금",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 유지 증거금"
+        },
+        {
+          "id": "T29_C4",
+          "type": "contains",
+          "expected": "강제 청산",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 강제 청산"
+        },
+        {
+          "id": "T29_C5",
+          "type": "chrf",
+          "expected": "시장 변동성 확대로 인해 유지 증거금이 부족할 경우 사전 통보 없이 강제 청산될 수 있다",
+          "threshold": 0.7,
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "회귀문 chrF 유사도",
+          "extract_regex": "2단계\\(한국어회귀\\):\\s*([^\\r\\n]+)"
+        }
+      ]
+    },
+    "T30": {
+      "id": "T30",
+      "category": "F4_회귀번역",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "컴퓨터 과학 분산 시스템 핵심 용어의 한-일-한 왕복 보존성",
+      "expected_marker_content": "1단계(일본어): ビザンチン障害耐性合意アルゴリズムは、ネットワーク遅延の中でもクォーラムノードの承認を通じてデータ一貫性を保証する。\n2단계(한국어회귀): 비잔틴 장애 허용 합의 알고리즘은 네트워크 지연 속에서도 정족수 노드의 승인을 통해 데이터 일관성을 보장한다.",
+      "checks": [
+        {
+          "id": "T30_C1",
+          "type": "contains",
+          "expected": "ビザンチン障害耐性",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 비잔틴장애허용"
+        },
+        {
+          "id": "T30_C2",
+          "type": "contains",
+          "expected": "クォーラムノード",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "일본어 쿼럼노드"
+        },
+        {
+          "id": "T30_C3",
+          "type": "contains",
+          "expected": "비잔틴 장애 허용",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 비잔틴 장애 허용"
+        },
+        {
+          "id": "T30_C4",
+          "type": "contains",
+          "expected": "데이터 일관성",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "회귀 데이터 일관성"
+        },
+        {
+          "id": "T30_C5",
+          "type": "chrf",
+          "expected": "비잔틴 장애 허용 합의 알고리즘은 네트워크 지연 속에서도 정족수 노드의 승인을 통해 데이터 일관성을 보장한다",
+          "threshold": 0.7,
+          "norm": "ignore_whitespace",
+          "points": 2,
+          "desc": "회귀문 chrF 유사도",
+          "extract_regex": "2단계\\(한국어회귀\\):\\s*([^\\r\\n]+)"
+        }
+      ]
+    },
+    "T31": {
+      "id": "T31",
+      "category": "F9_희귀한자숙어",
+      "difficulty": 3,
+      "tags": [
+        "rare-token",
+        "quant-sensitive"
+      ],
+      "rationale": "극저빈도 복합 한자(용 3개, 우레 3개, 물고기 3개 등)의 표준 한국어 자음 및 뜻 식별. 극단적 양자화 손실 검증",
+      "expected_marker_content": "1. 龘: 답\n2. 靐: 빙\n3. 鱻: 선\n4. 麤: 추\n5. 灪: 울",
+      "checks": [
+        {
+          "id": "T31_C1",
+          "type": "contains",
+          "expected": "龘: 답",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "龘(답) 독음 일치"
+        },
+        {
+          "id": "T31_C2",
+          "type": "contains",
+          "expected": "靐: 빙",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "靐(빙) 독음 일치"
+        },
+        {
+          "id": "T31_C3",
+          "type": "contains",
+          "expected": "鱻: 선",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "鱻(선) 독음 일치"
+        },
+        {
+          "id": "T31_C4",
+          "type": "contains",
+          "expected": "麤: 추",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "麤(추) 독음 일치"
+        },
+        {
+          "id": "T31_C5",
+          "type": "contains",
+          "expected": "灪: 울",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "灪(울) 독음 일치"
+        }
+      ]
+    },
+    "T32": {
+      "id": "T32",
+      "category": "F9_희귀한자숙어",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "rare-token"
+      ],
+      "rationale": "동일 한자가 결합 단어에 따라 음이 갈리는 다음자(多音字) 문맥 판별 정밀도",
+      "expected_marker_content": "1. 相殺: 상쇄\n2. 自暴自棄: 자포자기\n3. 嗚咽: 오열\n4. 省略: 생략\n5. 龜尾: 구미",
+      "checks": [
+        {
+          "id": "T32_C1",
+          "type": "contains",
+          "expected": "상쇄",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "相殺 -> 상쇄"
+        },
+        {
+          "id": "T32_C2",
+          "type": "contains",
+          "expected": "자포자기",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "自暴自棄 -> 자포자기"
+        },
+        {
+          "id": "T32_C3",
+          "type": "contains",
+          "expected": "오열",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "嗚咽 -> 오열"
+        },
+        {
+          "id": "T32_C4",
+          "type": "contains",
+          "expected": "생략",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "省略 -> 생략"
+        },
+        {
+          "id": "T32_C5",
+          "type": "contains",
+          "expected": "구미",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "龜尾 -> 구미"
+        }
+      ]
+    },
+    "T33": {
+      "id": "T33",
+      "category": "F9_희귀한자숙어",
+      "difficulty": 3,
+      "tags": [
+        "rare-token",
+        "quant-sensitive"
+      ],
+      "rationale": "고난도 고사성어 표기 및 어휘 의미 매칭의 미세 차이 검출",
+      "expected_marker_content": "1. 沆瀣一氣: 항해일기\n2. 檮杌: 도올\n3. 跋扈: 발호\n4. 魍魎: 망량\n5. 齷齪: 악착",
+      "checks": [
+        {
+          "id": "T33_C1",
+          "type": "contains",
+          "expected": "항해일기",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "沆瀣一氣 독음"
+        },
+        {
+          "id": "T33_C2",
+          "type": "contains",
+          "expected": "도올",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "檮杌 독음"
+        },
+        {
+          "id": "T33_C3",
+          "type": "contains",
+          "expected": "발호",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "跋扈 독음"
+        },
+        {
+          "id": "T33_C4",
+          "type": "contains",
+          "expected": "망량",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "魍魎 독음"
+        },
+        {
+          "id": "T33_C5",
+          "type": "contains",
+          "expected": "악착",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "齷齪 독음"
+        }
+      ]
+    },
+    "T34": {
+      "id": "T34",
+      "category": "F9_희귀한자숙어",
+      "difficulty": 2,
+      "tags": [
+        "rare-token",
+        "quant-sensitive"
+      ],
+      "rationale": "조선시대 관서명 및 관직명의 한자어 독음 판별",
+      "expected_marker_content": "1. 掌苑署: 장원서\n2. 提調: 제조\n3. 宣傳官: 선전관\n4. 承政院: 승정원\n5. 司憲府: 사헌부",
+      "checks": [
+        {
+          "id": "T34_C1",
+          "type": "contains",
+          "expected": "장원서",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "掌苑署 독음"
+        },
+        {
+          "id": "T34_C2",
+          "type": "contains",
+          "expected": "제조",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "提調 독음"
+        },
+        {
+          "id": "T34_C3",
+          "type": "contains",
+          "expected": "선전관",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "宣傳官 독음"
+        },
+        {
+          "id": "T34_C4",
+          "type": "contains",
+          "expected": "승정원",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "承政院 독음"
+        },
+        {
+          "id": "T34_C5",
+          "type": "contains",
+          "expected": "사헌부",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "司憲府 독음"
+        }
+      ]
+    },
+    "T35": {
+      "id": "T35",
+      "category": "F9_희귀한자숙어",
+      "difficulty": 2,
+      "tags": [
+        "rare-token",
+        "quant-sensitive"
+      ],
+      "rationale": "인명용 희귀 한자 및 이체자의 표준 한국 한자음 식별",
+      "expected_marker_content": "1. 喆: 철\n2. 昞: 병\n3. 晙: 준\n4. 爀: 혁\n5. 澈: 철",
+      "checks": [
+        {
+          "id": "T35_C1",
+          "type": "contains",
+          "expected": "喆: 철",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "喆 독음"
+        },
+        {
+          "id": "T35_C2",
+          "type": "contains",
+          "expected": "昞: 병",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "昞 독음"
+        },
+        {
+          "id": "T35_C3",
+          "type": "contains",
+          "expected": "晙: 준",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "晙 독음"
+        },
+        {
+          "id": "T35_C4",
+          "type": "contains",
+          "expected": "爀: 혁",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "爀 독음"
+        },
+        {
+          "id": "T35_C5",
+          "type": "contains",
+          "expected": "澈: 철",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "澈 독음"
+        }
+      ]
+    },
+    "T36": {
+      "id": "T36",
+      "category": "F10_다단계추론",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "60갑자 천간(10)·지지(12) 잉여류 순환 연산 및 역사 연도 추론의 중간 단계 정밀도",
+      "expected_marker_content": "1. 1919년연도차이: 327\n2. 1919년나머지: 27\n3. 1919년간지: 기미(己未)\n4. 2050년나머지: 11\n5. 2050년간지: 경오(庚午)",
+      "checks": [
+        {
+          "id": "T36_C1",
+          "type": "numeric",
+          "expected": 327,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "1919년 연도차이 일치",
+          "extract_regex": "1\\.\\s*1919년연도차이:\\s*(\\d+)"
+        },
+        {
+          "id": "T36_C2",
+          "type": "numeric",
+          "expected": 27,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "1919년 mod 60 나머지",
+          "extract_regex": "2\\.\\s*1919년나머지:\\s*(\\d+)"
+        },
+        {
+          "id": "T36_C3",
+          "type": "contains",
+          "expected": "기미",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "1919년 간지 기미"
+        },
+        {
+          "id": "T36_C4",
+          "type": "numeric",
+          "expected": 11,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "2050년 mod 60 나머지",
+          "extract_regex": "4\\.\\s*2050년나머지:\\s*(\\d+)"
+        },
+        {
+          "id": "T36_C5",
+          "type": "contains",
+          "expected": "경오",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "2050년 간지 경오"
+        }
+      ]
+    },
+    "T37": {
+      "id": "T37",
+      "category": "F10_다단계추론",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "한자 강희자전 표준 총획수 지식과 다단계 산술 연산 체인 결합 검증",
+      "expected_marker_content": "1. 획수목록: 1, 3, 11, 16\n2. 획수총합: 31\n3. 國획수: 11\n4. 龍획수: 16\n5. 최종결과: 222",
+      "checks": [
+        {
+          "id": "T37_C1",
+          "type": "contains",
+          "expected": "1, 3, 11, 16",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "각 획수 목록"
+        },
+        {
+          "id": "T37_C2",
+          "type": "numeric",
+          "expected": 31,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "획수 총합 31",
+          "extract_regex": "2\\.\\s*획수총합:\\s*(\\d+)"
+        },
+        {
+          "id": "T37_C3",
+          "type": "numeric",
+          "expected": 11,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "國 획수 11",
+          "extract_regex": "3\\.\\s*國획수:\\s*(\\d+)"
+        },
+        {
+          "id": "T37_C4",
+          "type": "numeric",
+          "expected": 16,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "龍 획수 16",
+          "extract_regex": "4\\.\\s*龍획수:\\s*(\\d+)"
+        },
+        {
+          "id": "T37_C5",
+          "type": "numeric",
+          "expected": 222,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 2,
+          "desc": "최종 연산 결과 222",
+          "extract_regex": "5\\.\\s*최종결과:\\s*(\\d+)"
+        }
+      ]
+    },
+    "T38": {
+      "id": "T38",
+      "category": "F10_다단계추론",
+      "difficulty": 2,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "2차원 격자 좌표계에서의 단계별 이동 추적 및 최종 위치 한자 매핑 추론",
+      "expected_marker_content": "1. 1단계좌표: (1,3)\n2. 2단계좌표: (1,5)\n3. 3단계좌표: (5,5)\n4. 4단계최종좌표: (5,3)\n5. 최종위치한자: 水",
+      "checks": [
+        {
+          "id": "T38_C1",
+          "type": "regex",
+          "expected": "[\\(\\[]?\\s*1\\s*,\\s*3\\s*[\\)\\]]?",
+          "norm": "none",
+          "points": 1,
+          "desc": "1단계 좌표 (1,3)"
+        },
+        {
+          "id": "T38_C2",
+          "type": "regex",
+          "expected": "[\\(\\[]?\\s*1\\s*,\\s*5\\s*[\\)\\]]?",
+          "norm": "none",
+          "points": 1,
+          "desc": "2단계 좌표 (1,5)"
+        },
+        {
+          "id": "T38_C3",
+          "type": "regex",
+          "expected": "[\\(\\[]?\\s*5\\s*,\\s*5\\s*[\\)\\]]?",
+          "norm": "none",
+          "points": 1,
+          "desc": "3단계 좌표 (5,5)"
+        },
+        {
+          "id": "T38_C4",
+          "type": "regex",
+          "expected": "[\\(\\[]?\\s*5\\s*,\\s*3\\s*[\\)\\]]?",
+          "norm": "none",
+          "points": 1,
+          "desc": "4단계 최종좌표 (5,3)"
+        },
+        {
+          "id": "T38_C5",
+          "type": "contains",
+          "expected": "최종위치한자: 水",
+          "norm": "ignore_whitespace",
+          "points": 1,
+          "desc": "최종 위치 한자 水"
+        }
+      ]
+    },
+    "T39": {
+      "id": "T39",
+      "category": "F10_다단계추론",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "동아시아 전통 도량형(근, 냥, 돈, g)의 단계별 복합 산술 단위 환산",
+      "expected_marker_content": "1. 곡물돈환산: 520\n2. 합산총돈: 545\n3. 곡물그램: 1950\n4. 약재그램: 93.75\n5. 합산총그램: 2043.75",
+      "checks": [
+        {
+          "id": "T39_C1",
+          "type": "numeric",
+          "expected": 520,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "곡물 돈 단위 환산",
+          "extract_regex": "1\\.\\s*곡물돈환산:\\s*([0-9\\.,．]+)"
+        },
+        {
+          "id": "T39_C2",
+          "type": "numeric",
+          "expected": 545,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "합산 총 돈 수",
+          "extract_regex": "2\\.\\s*합산총돈:\\s*([0-9\\.,．]+)"
+        },
+        {
+          "id": "T39_C3",
+          "type": "numeric",
+          "expected": 1950,
+          "epsilon": 0.0,
+          "norm": "none",
+          "points": 1,
+          "desc": "곡물 무게 그램",
+          "extract_regex": "3\\.\\s*곡물그램:\\s*([0-9\\.,．]+)"
+        },
+        {
+          "id": "T39_C4",
+          "type": "numeric",
+          "expected": 93.75,
+          "epsilon": 0.01,
+          "norm": "none",
+          "points": 1,
+          "desc": "약재 무게 그램",
+          "extract_regex": "4\\.\\s*약재그램:\\s*([0-9\\.,．]+)"
+        },
+        {
+          "id": "T39_C5",
+          "type": "numeric",
+          "expected": 2043.75,
+          "epsilon": 0.01,
+          "norm": "none",
+          "points": 2,
+          "desc": "합산 총 그램",
+          "extract_regex": "5\\.\\s*합산총그램:\\s*([0-9\\.,．]+)"
+        }
+      ]
+    },
+    "T40": {
+      "id": "T40",
+      "category": "F10_다단계추론",
+      "difficulty": 3,
+      "tags": [
+        "quant-sensitive",
+        "format-sensitive"
+      ],
+      "rationale": "명제 논리(진실/거짓 판별 및 배타적 용의자 특정)의 3단계 엄밀한 연역 추론",
+      "expected_marker_content": "1. 乙진술: 거짓\n2. 丙진술: 참\n3. 甲진술: 거짓\n4. 참말한사람: 丙\n5. 진범: 乙",
+      "checks": [
+        {
+          "id": "T40_C1",
+          "type": "regex",
+          "expected": "1\\.\\s*乙진술:\\s*거짓",
+          "norm": "none",
+          "points": 1,
+          "desc": "乙 진술 거짓"
+        },
+        {
+          "id": "T40_C2",
+          "type": "regex",
+          "expected": "2\\.\\s*丙진술:\\s*참",
+          "norm": "none",
+          "points": 1,
+          "desc": "丙 진술 참"
+        },
+        {
+          "id": "T40_C3",
+          "type": "regex",
+          "expected": "3\\.\\s*甲진술:\\s*거짓",
+          "norm": "none",
+          "points": 1,
+          "desc": "甲 진술 거짓"
+        },
+        {
+          "id": "T40_C4",
+          "type": "regex",
+          "expected": "4\\.\\s*참말한사람:\\s*(?:丙|병)",
+          "norm": "none",
+          "points": 1,
+          "desc": "참말한사람 丙"
+        },
+        {
+          "id": "T40_C5",
+          "type": "regex",
+          "expected": "5\\.\\s*진범:\\s*(?:乙|을)",
+          "norm": "none",
+          "points": 2,
+          "desc": "진범 乙"
+        }
+      ]
+    }
+  }
+}

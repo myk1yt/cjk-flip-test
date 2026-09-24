@@ -1,0 +1,82 @@
+﻿provider,run,prompt_id,category,check_id,check_type,expected,actual,passed,points,reason
+Charm_Kimi_K3_Max,r1,T02,F1_언어정체성플립,T02_C5,regex,2\.\s*(?:한국어\s*)?(?:번역|완역)?:\s*[^\n\r]*[가-힣],1. 일본어 2. 도쿄도 지요다구 가스미가세키 1초메 3번 1호 경제산업성 대신관방 총무과,False,0.0,Regex '2\.\s*(?:한국어\s*)?(?:번역|완역)?:\s*[^\n\r]*[가-힣]' did not match
+Charm_Kimi_K3_Max,r1,T11,F6_문자열정밀조작,T11_C6,contains,다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대,1. 총글자수: 32 2. 7번째: 民 3. 15번째: 민 4. 한글국빈도: 3 5. 한자,False,0.0,Substring '다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대' not found in output
+Charm_Kimi_K3_Max,r1,T33,F9_희귀한자숙어,T33_C5,contains,악착,1. 沆瀣一氣: 항해일기 2. 檮杌: 도올 3. 跋扈: 발호 4. 魍魎: 망량 5. 齷齪:,False,0.0,Substring '악착' not found in output
+Charm_Kimi_K3_Max,r2,T01,F1_언어정체성플립,T01_C3,contains,각하 처분 통지,1. 언어 정체성: 한국어(국한문혼용) 2. 전환: 이 건은 신청서 첨부 서류 미비로 인한,False,0.0,Substring '각하처분통지' not found in output
+Charm_Kimi_K3_Max,r2,T14,F6_문자열정밀조작,T14_C4,contains,うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서,1. 길이: 24 2. 부분문자열: ル北京ペキン平壌ピョ 3. ン빈도: 3 4. 역순: うょ,False,0.0,Substring 'うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서' not found in output
+Charm_Kimi_K3_Max,r2,T33,F9_희귀한자숙어,T33_C5,contains,악착,1. 沆瀣一氣: 항해일기 2. 檮杌: 도올 3. 跋扈: 발호 4. 魍魎: 망량 5. 齷齪:,False,0.0,Substring '악착' not found in output
+Charm_Kimi_K3_Max,r3,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 번역: 외상투자 환경을 한층 더 최적화하고 외상투자,False,0.0,Substring '외국인투자환경' not found in output
+Charm_Kimi_K3_Max,r3,T14,F6_문자열정밀조작,T14_C4,contains,うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서,1. 길이: 24 2. 부분문자열: ル北京ペキン平壌ピョ 3. ン빈도: 3 4. 역순: うょ,False,0.0,Substring 'うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서' not found in output
+Moonshot_Kimi_K3_Max,r1,T01,F1_언어정체성플립,T01_C2,contains,신청서 첨부 서류 미비,1. 언어 정체성: 한국어(국한문혼용) 2. 전환문: 본 건 신청서는 첨부 서류 미비로 인,False,0.0,Substring '신청서첨부서류미비' not found in output
+Moonshot_Kimi_K3_Max,r1,T01,F1_언어정체성플립,T01_C3,contains,각하 처분 통지,1. 언어 정체성: 한국어(국한문혼용) 2. 전환문: 본 건 신청서는 첨부 서류 미비로 인,False,0.0,Substring '각하처분통지' not found in output
+Moonshot_Kimi_K3_Max,r1,T05,F1_언어정체성플립,T05_C2,contains,배우자,"1. 실제 언어: 중국어 2. 번역문: 그는 어두운 방 안에서 진지하게 공을 들이며, 연인",False,0.0,Substring '배우자' not found in output
+Moonshot_Kimi_K3_Max,r1,T27,F4_회귀번역,T27_C4,contains,손해배상 책임,1단계(중국어): 接收方当事人负有保密义务，如向第三方泄露，应承担损害赔偿责任。 2단계(한국어회,False,0.0,Substring '손해배상책임' not found in output
+Moonshot_Kimi_K3_Max,r1,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 율,False,0.0,Substring '灪:울' not found in output
+Moonshot_Kimi_K3_Max,r2,T01,F1_언어정체성플립,T01_C3,contains,각하 처분 통지,1. 언어 정체성: 한국어(국한문혼용) 2. 순수 한글 전환: 이 건 신청서 첨부 서류 미,False,0.0,Substring '각하처분통지' not found in output
+Moonshot_Kimi_K3_Max,r2,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 한국어 번역: 외상투자 환경을 한층 더 최적화하고 ,False,0.0,Substring '외국인투자환경' not found in output
+Moonshot_Kimi_K3_Max,r2,T27,F4_회귀번역,T27_C4,contains,손해배상 책임,1단계(중국어): 接收方承担保密义务，如向第三方泄露，则应承担损害赔偿责任。 2단계(한국어회귀),False,0.0,Substring '손해배상책임' not found in output
+Moonshot_Kimi_K3_Max,r2,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 을,False,0.0,Substring '灪:울' not found in output
+Moonshot_Kimi_K3_Max,r3,T01,F1_언어정체성플립,T01_C3,contains,각하 처분 통지,1. 언어 정체성: 한국어(국한문혼용) 2. 전환문: 본 건은 신청서 첨부 서류 미비로 인,False,0.0,Substring '각하처분통지' not found in output
+Moonshot_Kimi_K3_Max,r3,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 한국어 번역: 외상투자(외국인 투자) 환경을 한층 ,False,0.0,Substring '외국인투자환경' not found in output
+Moonshot_Kimi_K3_Max,r3,T05,F1_언어정체성플립,T05_C4,contains,공을,1. 실제 언어: 중국어 2. 한국어 번역: 그는 어두운 방 안에서 열심히 작업에 품을 들,False,0.0,Substring '공을' not found in output
+Moonshot_Kimi_K3_Max,r3,T33,F9_희귀한자숙어,T33_C5,contains,악착,1. 沆瀣一氣: 항해일기 2. 檮杌: 도올 3. 跋扈: 발호 4. 魍魎: 망량 5. 齷齪:,False,0.0,Substring '악착' not found in output
+NW_Kimi_K3_Max,r1,T02,F1_언어정체성플립,T02_C3,contains,행정 절차 간소화,1. 언어 정체성: 일본어 2. 한국어 완역: 도쿄도 지요다구 가스미가세키 1초메 3번 1,False,0.0,Substring '행정절차간소화' not found in output
+NW_Kimi_K3_Max,r1,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 한국어 번역: 외상투자 환경을 더욱 최적화하고 외국,False,0.0,Substring '외국인투자환경' not found in output
+NW_Kimi_K3_Max,r1,T05,F1_언어정체성플립,T05_C4,contains,공을,"1. 실제 언어: 중국어 2. 한국어 번역: 그는 어두운 방 안에서 진지하게 노력하며, 아",False,0.0,Substring '공을' not found in output
+NW_Kimi_K3_Max,r1,T05,F1_언어정체성플립,T05_C5,regex,(애씀|힘씀|억지로),"1. 실제 언어: 중국어 2. 한국어 번역: 그는 어두운 방 안에서 진지하게 노력하며, 아",False,0.0,Regex '(애씀|힘씀|억지로)' did not match
+NW_Kimi_K3_Max,r1,T14,F6_문자열정밀조작,T14_C4,contains,うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서,1. 길이: 24 2. 부분문자열: ル北京ペキン平壌ピョ 3. ン빈도: 3 4. 역순: うょ,False,0.0,Substring 'うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서' not found in output
+NW_Kimi_K3_Max,r1,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 율,False,0.0,Substring '灪:울' not found in output
+NW_Kimi_K3_Max,r1,T32,F9_희귀한자숙어,T32_C2,contains,자포자기,1. 相殺: 상쇄 2. 自暴自棄: 자폭자기 3. 嗚咽: 오얼 4. 省略: 생략 5. 龜尾:,False,0.0,Substring '자포자기' not found in output
+NW_Kimi_K3_Max,r1,T32,F9_희귀한자숙어,T32_C3,contains,오열,1. 相殺: 상쇄 2. 自暴自棄: 자폭자기 3. 嗚咽: 오얼 4. 省略: 생략 5. 龜尾:,False,0.0,Substring '오열' not found in output
+NW_Kimi_K3_Max,r1,T33,F9_희귀한자숙어,T33_C5,contains,악착,1. 沆瀣一氣: 항해일기 2. 檮杌: 도올 3. 跋扈: 발호 4. 魍魎: 망량 5. 齷齪:,False,0.0,Substring '악착' not found in output
+NW_Kimi_K3_Max,r2,T01,F1_언어정체성플립,T01_C3,contains,각하 처분 통지,1. 언어 정체성: 한국어(국한문혼용) 2. 전환문: 신청서 첨부 서류 미비로 인한 기각 ,False,0.0,Substring '각하처분통지' not found in output
+NW_Kimi_K3_Max,r2,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 번역: 외상투자 환경을 한층 더 최적화하여 외상투자,False,0.0,Substring '외국인투자환경' not found in output
+NW_Kimi_K3_Max,r2,T05,F1_언어정체성플립,T05_C4,contains,공을,"1. 실제 언어: 중국어 2. 번역: 그는 어두운 방 안에서 성실하게 시간과 정성을 들여,",False,0.0,Substring '공을' not found in output
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C17,exact,驱,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 16 mismatch: expected '驱', got '战'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C18,exact,动,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 17 mismatch: expected '动', got '略'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C19,exact,战,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 18 mismatch: expected '战', got '导'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C20,exact,略,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 19 mismatch: expected '略', got '向'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C21,exact,导,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 20 mismatch: expected '导', got '标'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C22,exact,向,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 21 mismatch: expected '向', got '准'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C23,exact,标,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Char index 22 mismatch: expected '标', got '化'"
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C24,exact,准,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,Output length 23 too short for index 23
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C25,exact,化,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,Output length 23 too short for index 24
+NW_Kimi_K3_Max,r2,T10,F3_자형변환,T10_C26,exact,观点发动机总体规划实践与创新发展驱动战略导向标准化,观点发动机总体规划实践与创新发展战略导向标准化,False,0.0,"Mismatch: expected '观点发动机总体规划实践与创新发展驱动战略导向标准化', got '观点发动机总体规划实践与创新发展战略导向标准化'"
+NW_Kimi_K3_Max,r2,T11,F6_문자열정밀조작,T11_C6,contains,다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대,1. 총글자수: 32 2. 7번째: 民 3. 15번째: 민 4. 한글국빈도: 3 5. 한자,False,0.0,Substring '다있게에민국은권주權主며이국화공주민國和共主民은國民韓大국민한대' not found in output
+NW_Kimi_K3_Max,r2,T31,F9_희귀한자숙어,T31_C2,contains,靐: 빙,1. 龘: 답 2. 靐: 병 3. 鱻: 선 4. 麤: 추 5. 灪: 울,False,0.0,Substring '靐:빙' not found in output
+NW_Kimi_K3_Max,r3,T02,F1_언어정체성플립,T02_C4,contains,"도쿄도, 가스미가세키",1. 언어 정체성: 일본어 2. 완역: 도쿄도 지요다구 가스미가세키 1초메 3번 1호 경제,False,0.0,"Substring '도쿄도,가스미가세키' not found in output"
+NW_Kimi_K3_Max,r3,T03,F1_언어정체성플립,T03_C2,contains,외국인 투자 환경,1. 언어 정체성: 중국어(간체) 2. 번역: 「외상투자 환경을 한층 더 최적화하고 외상투,False,0.0,Substring '외국인투자환경' not found in output
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C10,exact,实,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 9 mismatch: expected '实', got '与'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C11,exact,践,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 10 mismatch: expected '践', got '实'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C12,exact,与,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 11 mismatch: expected '与', got '践'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C15,exact,发,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 14 mismatch: expected '发', got '驱'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C16,exact,展,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 15 mismatch: expected '展', got '动'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C17,exact,驱,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 16 mismatch: expected '驱', got '发'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C18,exact,动,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Char index 17 mismatch: expected '动', got '展'"
+NW_Kimi_K3_Max,r3,T10,F3_자형변환,T10_C26,exact,观点发动机总体规划实践与创新发展驱动战略导向标准化,观点发动机总体规划与实践创新驱动发展战略导向标准化,False,0.0,"Mismatch: expected '观点发动机总体规划实践与创新发展驱动战略导向标准化', got '观点发动机总体规划与实践创新驱动发展战略导向标准化'"
+NW_Kimi_K3_Max,r3,T12,F6_문자열정밀조작,T12_C5,contains,たしまし来到が節季の春く咲くし美がラクサ桜のウョキウト京東,1. 길이: 29 2. 9번째: 桜 3. 18번째: く 4. の빈도: 2 5. 역순: たし,False,0.0,Substring 'たしまし来到が節季の春く咲くし美がラクサ桜のウョキウト京東' not found in output
+NW_Kimi_K3_Max,r3,T13,F6_문자열정밀조작,T13_C5,contains,俭以奢戒危思安居大乃容有川百纳海下足于始行之里千,1. 길이: 24 2. 8번째: 下 3. 짝수열: 里行于下纳川容大安危奢俭 4. 大빈도: 1,False,0.0,Substring '俭以奢戒危思安居大乃容有川百纳海下足于始行之里千' not found in output
+NW_Kimi_K3_Max,r3,T14,F6_문자열정밀조작,T14_C4,contains,うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서,1. 길이: 24 2. 부분문자열: ル北京ペキン平壌ピョ 3. ン빈도: 3 4. 역순: うょ,False,0.0,Substring 'うょきうと京東ンヤンョピ壌平ンキペ京北ルウソ울서' not found in output
+NW_Kimi_K3_Max,r3,T19,F7_장문정확인용,T19_C3,contains,"INT8) 또는 4비트 부동소수점(FP4) 형식으로 변환할 때, 수치 표현 범위의 축소로",구간A: 하고 엣지 디바이스에서의 전력 소모를 최소화하기 위해 필수적으로 요구되는 공학적 ,False,0.0,"Substring 'INT8) 또는 4비트 부동소수점(FP4) 형식으로 변환할 때, 수치 표현 범위의 축소로' not found in output"
+NW_Kimi_K3_Max,r3,T19,F7_장문정확인용,T19_C4,char_count,49,구간A: 하고 엣지 디바이스에서의 전력 소모를 최소화하기 위해 필수적으로 요구되는 공학적 ,False,0.0,"Count mismatch: got 48, expected 49 ± 0"
+NW_Kimi_K3_Max,r3,T31,F9_희귀한자숙어,T31_C1,contains,龘: 답,1. 龘: 용 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 울,False,0.0,Substring '龘:답' not found in output
+NW_Kimi_K3_Max,r3,T32,F9_희귀한자숙어,T32_C3,contains,오열,1. 相殺: 상쇄 2. 自暴自棄: 자포자기 3. 嗚咽: 오억 4. 省略: 생략 5. 龜尾:,False,0.0,Substring '오열' not found in output
+NW_Kimi_K3_Max,r3,T33,F9_희귀한자숙어,T33_C5,contains,악착,1. 沆瀣一氣: 항해일기 2. 檮杌: 도올 3. 跋扈: 발호 4. 魍魎: 망량 5. 齷齪:,False,0.0,Substring '악착' not found in output
+sample_fp4,r1,T06,F3_자형변환,T06_C05,exact,龍,愛國發財龙馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Char index 4 mismatch: expected '龍', got '龙'"
+sample_fp4,r1,T06,F3_자형변환,T06_C26,exact,愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀,愛國發財龙馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Mismatch: expected '愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀', got '愛國發財龙馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀'"
+sample_fp4,r1,T08,F3_자형변환,T08_C23,exact,瀧,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍,False,0.0,"Char index 22 mismatch: expected '瀧', got '滝'"
+sample_fp4,r1,T08,F3_자형변환,T08_C26,exact,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍,False,0.0,"Mismatch: expected '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍', got '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍'"
+sample_fp4,r1,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 율,False,0.0,Substring '灪:울' not found in output
+sample_fp4,r1,T37,F10_다단계추론,T37_C5,numeric,222,"1. 획수목록: 1, 3, 11, 16 2. 획수총합: 31 3. 國획수: 11 4. 龍획",False,0.0,No numeric value matching 222.0 (found: ['217'])
+sample_fp4,r2,T06,F3_자형변환,T06_C11,exact,門,愛國發財龍馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Char index 10 mismatch: expected '門', got '门'"
+sample_fp4,r2,T06,F3_자형변환,T06_C26,exact,愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀,愛國發財龍馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Mismatch: expected '愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀', got '愛國發財龍馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀'"
+sample_fp4,r2,T08,F3_자형변환,T08_C23,exact,瀧,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍,False,0.0,"Char index 22 mismatch: expected '瀧', got '滝'"
+sample_fp4,r2,T08,F3_자형변환,T08_C26,exact,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍,False,0.0,"Mismatch: expected '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍', got '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮滝櫻龍'"
+sample_fp4,r2,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: 율,False,0.0,Substring '灪:울' not found in output
+sample_fp4,r2,T37,F10_다단계추론,T37_C5,numeric,222,"1. 획수목록: 1, 3, 11, 16 2. 획수총합: 31 3. 國획수: 11 4. 龍획",False,0.0,No numeric value matching 222.0 (found: ['220'])
+sample_fp4,r3,T06,F3_자형변환,T06_C05,exact,龍,愛國發財龙馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Char index 4 mismatch: expected '龍', got '龙'"
+sample_fp4,r3,T06,F3_자형변환,T06_C11,exact,門,愛國發財龙馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Char index 10 mismatch: expected '門', got '门'"
+sample_fp4,r3,T06,F3_자형변환,T06_C26,exact,愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀,愛國發財龙馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀,False,0.0,"Mismatch: expected '愛國發財龍馬車關開學門書長東語鳥魚點買賣歸電歡鐵銀', got '愛國發財龙馬車關開學门書長東語鳥魚點買賣歸電歡鐵銀'"
+sample_fp4,r3,T08,F3_자형변환,T08_C24,exact,櫻,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧桜龍,False,0.0,"Char index 23 mismatch: expected '櫻', got '桜'"
+sample_fp4,r3,T08,F3_자형변환,T08_C26,exact,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍,鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧桜龍,False,0.0,"Mismatch: expected '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧櫻龍', got '鐵驛圖國氣體廣轉藝傳單賣會學寫當壽拔步惠佛禮瀧桜龍'"
+sample_fp4,r3,T31,F9_희귀한자숙어,T31_C5,contains,灪: 울,1. 龘: 답 2. 靐: 빙 3. 鱻: 선 4. 麤: 추 5. 灪: [미상],False,0.0,Substring '灪:울' not found in output
