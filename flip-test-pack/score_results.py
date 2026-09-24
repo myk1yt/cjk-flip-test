@@ -422,8 +422,9 @@ def parse_mega_batch(text: str, source_name: str = "") -> Dict[str, str]:
     """
     Parses a single MEGA.md content containing multiple prompts (T01~T40).
     Headers are matched ONLY at line start with an explicit banner/heading opener,
-    e.g. === [Txx] === (also tolerates ===[Txx]===, === Txx ===, --- [Txx] ---,
-    ## [Txx], ### **[Txx]** (카테고리), markdown bold wrap, single digit T1~T9).
+    e.g. === [Txx] === (also tolerates ===[Txx]===, === Txx ===, === [xx] ===, === xx ===,
+    --- [Txx] ---, --- [xx] ---, ## [Txx], ## [xx], ## xx, ### **[Txx]** (카테고리),
+    markdown bold wrap, single digit T1~T9, 1~9, and prefixes like Prompt/Q).
     In-body references like "- [T03] 문항과 동일" are never treated as headers.
     A monotonic guard drops regressive duplicate banners, and a warning is printed
     to stderr when the parsed question count != 40 instead of silently proceeding.
@@ -432,12 +433,12 @@ def parse_mega_batch(text: str, source_name: str = "") -> Dict[str, str]:
     if not text:
         return {}
 
-    # Banner shape: opener (=== / --- / ##) + T-id + optional closer, header line only.
+    # Banner shape: opener (=== / --- / ##) + optional prefix (T/Prompt/Q) + number (1~40) + optional closer, header line only.
     pattern = re.compile(
         r"(?:^|\r?\n)[ \t]*(?:"
-        r"(?:\*{0,2}[ \t]*(?:={2,}|-{2,})[ \t]*\[?[ \t]*T0*(40|[1-3]\d|[1-9])\b[ \t]*\]?(?:[ \t]+[^=\-\r\n]*?)?[ \t]*(?:={2,}|-{2,})?[ \t]*\*{0,2}[ \t]*)"
+        r"(?:\*{0,2}[ \t]*(?:={2,}|-{2,})[ \t]*\*{0,2}[ \t]*(?:(?:T|Prompt|Question|Q)[\t\-_ ]*)?\[?[ \t]*\*{0,2}[ \t]*(?:(?:T|Prompt|Question|Q)[\t\-_ ]*)?0*(40|[1-3]\d|[1-9])\b[ \t]*\*{0,2}[ \t]*\]?(?:[ \t:]+[^=\-\r\n]*?)?[ \t]*(?:={2,}|-{2,})?[ \t]*\*{0,2}[ \t]*)"
         r"|"
-        r"(?:#{1,6}[ \t]*\*{0,2}[ \t]*\[?[ \t]*T0*(40|[1-3]\d|[1-9])\b[ \t]*\]?(?:[ \t]*\*{0,2})?[ \t]*[^\r\n]*?)"
+        r"(?:#{1,6}[ \t]*\*{0,2}[ \t]*(?:(?:T|Prompt|Question|Q)[\t\-_ ]*)?\[?[ \t]*\*{0,2}[ \t]*(?:(?:T|Prompt|Question|Q)[\t\-_ ]*)?0*(40|[1-3]\d|[1-9])\b[ \t]*\*{0,2}[ \t]*\]?(?:[ \t]*\*{0,2})?[ \t]*[^\r\n]*?)"
         r")(?:\r?\n|$)",
         re.IGNORECASE
     )
@@ -554,7 +555,8 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
         "failures": [],
         "pairwise_diff": {},
         "run_disagreements": {},
-        "truncation_warnings": {}
+        "truncation_warnings": {},
+        "formatting_warnings": {}
     }
     
     for provider, p_data in discovered.items():
@@ -575,24 +577,47 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
         else:
             target_runs = ["r1"] if "r1" in all_runs else all_runs[:1]
             
-        # Check truncation for Mega-Batch mode across the evaluated target_runs
+        # Check truncation and delimiter anomalies for Mega-Batch mode across evaluated target_runs
         if is_mega:
             all_pids = sorted(prompts_meta.keys())
             for rid in target_runs:
                 missing_in_run = [pid for pid in all_pids if not p_data.get(pid, {}).get(rid, "")]
                 if missing_in_run:
-                    first_missing = missing_in_run[0]
+                    # Token truncation check: missing prompts must form a contiguous tail ending at the final prompt (all_pids[-1])
+                    is_tail_truncation = (
+                        0 < len(missing_in_run) < len(all_pids)
+                        and missing_in_run == all_pids[-len(missing_in_run):]
+                    )
                     run_tag = f"[{rid}] " if is_runs_mode and len(target_runs) > 1 else ""
-                    warn_msg = f"⚠️ {run_tag}{first_missing}부터 응답 누락 감지: Max Output Tokens 설정을 4,096~8,192로 늘리세요"
-                    w_key = provider if provider not in results["truncation_warnings"] else f"{provider}_{rid}"
-                    results["truncation_warnings"][w_key] = {
-                        "provider": provider,
-                        "run": rid,
-                        "first_missing": first_missing,
-                        "missing_count": len(missing_in_run),
-                        "missing_pids": missing_in_run,
-                        "message": warn_msg
-                    }
+                    first_missing = missing_in_run[0]
+
+                    if is_tail_truncation:
+                        warn_msg = f"⚠️ {run_tag}{first_missing}부터 응답 누락 감지: Max Output Tokens 설정을 4,096~8,192로 늘리세요"
+                        w_key = provider if provider not in results["truncation_warnings"] else f"{provider}_{rid}"
+                        results["truncation_warnings"][w_key] = {
+                            "provider": provider,
+                            "run": rid,
+                            "first_missing": first_missing,
+                            "missing_count": len(missing_in_run),
+                            "missing_pids": missing_in_run,
+                            "message": warn_msg
+                        }
+                    else:
+                        pids_str = ", ".join(missing_in_run)
+                        warn_msg = f"⚠️ {run_tag}일부 문항 미파싱/누락 ({pids_str}): 배너 포맷 불일치 가능성을 확인하세요 (토큰 절단 아님)"
+                        w_key = provider if provider not in results["formatting_warnings"] else f"{provider}_{rid}"
+                        results["formatting_warnings"][w_key] = {
+                            "provider": provider,
+                            "run": rid,
+                            "missing_count": len(missing_in_run),
+                            "missing_pids": missing_in_run,
+                            "message": warn_msg
+                        }
+                        print(
+                            f"[WARNING] {provider} ({rid}): 비연속 또는 중간 문항 누락/미파싱 ({pids_str}). "
+                            f"배너 포맷 불일치 가능성을 확인하세요 (토큰 절단 경고 제외됨).",
+                            file=sys.stderr
+                        )
         
         run_scores_list = []
         run_earned_list = []
@@ -608,6 +633,13 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                 cat: {"points": 0.0, "max_points": 0.0, "passed": 0, "total": 0, "pct": 0.0}
                 for cat in categories
             }
+
+            all_pids = sorted(prompts_meta.keys())
+            missing_in_current_run = [p for p in all_pids if not p_data.get(p, {}).get(run_id, "")] if is_mega else []
+            is_tail_trunc_current = (
+                0 < len(missing_in_current_run) < len(all_pids)
+                and missing_in_current_run == all_pids[-len(missing_in_current_run):]
+            ) if is_mega else False
             
             for pid, p_info in prompts_meta.items():
                 cat = p_info["category"]
@@ -619,8 +651,17 @@ def run_scoring(master_path: Path, responses_dir: Path, is_runs_mode: bool = Fal
                 
                 if not raw_resp:
                     run_extracted_contents[pid].append("")
-                    actual_label = "TRUNCATED_OR_MISSING" if is_mega else "FILE_MISSING"
-                    fail_reason = "Response truncated or missing in Mega-Batch (Token Limit Exceeded)" if is_mega else "Response file missing"
+                    if is_mega:
+                        if is_tail_trunc_current and pid in missing_in_current_run:
+                            actual_label = "TRUNCATED_OR_MISSING"
+                            fail_reason = "Response truncated or missing in Mega-Batch (Token Limit Exceeded)"
+                        else:
+                            actual_label = "UNPARSED_OR_MISSING"
+                            fail_reason = "Response unparsed or missing in Mega-Batch (Formatting/Delimiter Issue)"
+                    else:
+                        actual_label = "FILE_MISSING"
+                        fail_reason = "Response file missing"
+
                     for chk in checks:
                         pts = float(chk.get("points", 1))
                         run_max_points += pts
@@ -823,6 +864,17 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
                 lines.append(f"> **{p}**: ⚠️ {run_tag}{msg} (누락 문항: {first_m} 외 {cnt-1}개)")
             lines.append("")
 
+        if results.get("formatting_warnings"):
+            lines.append("## ⚠️ 포맷/파싱 진단 경고 (Formatting / Parsing Warnings)")
+            lines.append("")
+            for p, w_info in results["formatting_warnings"].items():
+                rid = w_info.get("run", "")
+                run_tag = f"[{rid}] " if is_runs_mode and rid else ""
+                cnt = w_info.get('missing_count', 0)
+                pids_str = ", ".join(w_info.get('missing_pids', []))
+                lines.append(f"> **{p}**: ⚠️ {run_tag}비연속 또는 중간 문항 누락/미파싱 ({pids_str}): 배너 포맷 불일치 가능성을 확인하세요 (토큰 절단 아님)")
+            lines.append("")
+
         lines.extend([
             f"## 1. 카테고리별 정확도 매트릭스{avg_note}",
             ""
@@ -910,6 +962,17 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
                 cnt = w_info.get('missing_count', 0)
                 missing_text = f" (Missing {cnt} questions)" if cnt else ""
                 lines.append(f"> **{p}**: ⚠️ {run_tag}Output truncated starting at prompt {first_m}: Increase Max Output Tokens to 4,096–8,192{missing_text}")
+            lines.append("")
+
+        if results.get("formatting_warnings"):
+            lines.append("## ⚠️ Formatting / Parsing Diagnostic Warnings")
+            lines.append("")
+            for p, w_info in results["formatting_warnings"].items():
+                rid = w_info.get("run", "")
+                run_tag = f"[{rid}] " if is_runs_mode and rid else ""
+                cnt = w_info.get('missing_count', 0)
+                pids_str = ", ".join(w_info.get('missing_pids', []))
+                lines.append(f"> **{p}**: ⚠️ {run_tag}Isolated unparsed/missing prompts detected ({pids_str}): Check delimiter formatting (Not token truncation)")
             lines.append("")
 
         lines.extend([
@@ -1011,6 +1074,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
     provider_runs = results.get("provider_runs", {})
     provider_modes = results.get("provider_modes", {})
     truncation_warnings = results.get("truncation_warnings", {})
+    formatting_warnings = results.get("formatting_warnings", {})
     failures = results.get("failures", [])
     pairwise_diff = results.get("pairwise_diff", {})
     run_disagreements = results.get("run_disagreements", {})
@@ -1308,6 +1372,38 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             </div>
         </div>
         """
+
+    # 4b. Delimiter / Formatting Warning Banners
+    formatting_banners_html = ""
+    if formatting_warnings:
+        fmt_items = []
+        for p, w_info in formatting_warnings.items():
+            cnt = w_info.get('missing_count', 0)
+            pids_str = ", ".join(w_info.get('missing_pids', []))
+            rid = w_info.get('run', '')
+            run_tag = f"[{rid}] " if rid else ""
+            fmt_items.append(f"""
+            <div class="truncation-item">
+                <div class="truncation-header">
+                    <span class="trunc-badge" style="background: #f59e0b;" data-en="⚠️ Delimiter Formatting Issue" data-ko="⚠️ 배너 포맷 불일치">{"⚠️ 배너 포맷 불일치" if lang == "ko" else "⚠️ Delimiter Formatting Issue"}</span>
+                    <strong>{html.escape(p)}</strong>: <span class="trunc-msg" data-en="{run_tag}Isolated missing prompts: {pids_str}" data-ko="{run_tag}중간 문항 누락/미파싱: {pids_str}">{f'{run_tag}중간 문항 누락/미파싱: {pids_str}' if lang == "ko" else f'{run_tag}Isolated missing prompts: {pids_str}'}</span>
+                </div>
+                <p class="truncation-desc" data-en="Prompts ({pids_str}) were missing or had unparsed delimiters while subsequent prompts succeeded. This indicates a delimiter syntax variation, NOT output token limit exhaustion." data-ko="이후 문항이 정상 응답된 상태에서 특정 문항({pids_str})만 누락/미파싱되었습니다. 이는 토큰 부족(max_tokens)이 아니라 배너 구분자 문법 불일치로 인한 것입니다.">
+                    {"이후 문항이 정상 응답된 상태에서 특정 문항(" + pids_str + ")만 누락/미파싱되었습니다. 이는 토큰 부족(max_tokens)이 아니라 배너 구분자 문법 불일치로 인한 것입니다." if lang == "ko" else "Prompts (<code>" + pids_str + "</code>) were missing or unparsed while subsequent prompts succeeded. This indicates a delimiter syntax variation, <strong>NOT</strong> token truncation."}
+                </p>
+            </div>
+            """)
+        formatting_banners_html = f"""
+        <div class="truncation-box" style="border-left: 4px solid #f59e0b;">
+            <div class="truncation-icon" style="color: #f59e0b;">⚠️</div>
+            <div class="truncation-body">
+                <h3 data-i18n="formatting_title">{"포맷/파싱 진단 경고 (Formatting Warnings)" if lang == "ko" else "Formatting / Parsing Diagnostic Warnings (포맷/파싱 진단 경고)"}</h3>
+                {' '.join(fmt_items)}
+            </div>
+        </div>
+        """
+    if formatting_banners_html:
+        truncation_banners_html = (truncation_banners_html + "\n" + formatting_banners_html).strip()
 
     # 5. 2-Depth Hierarchical Failure Accordion
     failures_by_provider = {}
@@ -1673,6 +1769,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         "pairwise_diff": pairwise_diff,
         "run_disagreements": run_disagreements,
         "truncation_warnings": truncation_warnings,
+        "formatting_warnings": formatting_warnings,
         "category_names": CATEGORY_TRANSLATIONS,
     }
     benchmark_json = json.dumps(benchmark_payload, ensure_ascii=False).replace("</", "<\\/")
@@ -3105,13 +3202,26 @@ def main():
         print("\n" + "=" * 80)
         for p, w_info in results["truncation_warnings"].items():
             if is_ko:
-                print(f"⚠️ [진단 경고] {p}: {w_info['message']}")
+                print(f"⚠️ [진단 경고 - 토큰 절단] {p}: {w_info['message']}")
             else:
                 first_m = w_info.get('first_missing', '')
                 cnt = w_info.get('missing_count', 0)
                 rid = w_info.get('run', '')
                 run_tag = f"[{rid}] " if rid else ""
-                print(f"⚠️ [Diagnostic Warning] {p}: {run_tag}Output truncated starting at question {first_m}: Increase Max Output Tokens to 4,096–8,192 (Missing {cnt} questions)")
+                print(f"⚠️ [Diagnostic Warning - Truncation] {p}: {run_tag}Output truncated starting at question {first_m}: Increase Max Output Tokens to 4,096–8,192 (Missing {cnt} questions)")
+        print("=" * 80 + "\n")
+
+    # Print formatting warnings if any
+    if results.get("formatting_warnings"):
+        print("\n" + "=" * 80)
+        for p, w_info in results["formatting_warnings"].items():
+            pids_str = ", ".join(w_info.get('missing_pids', []))
+            rid = w_info.get('run', '')
+            run_tag = f"[{rid}] " if rid else ""
+            if is_ko:
+                print(f"⚠️ [진단 경고 - 포맷/파싱] {p}: {run_tag}일부 문항 미파싱/누락 ({pids_str}): 배너 포맷 불일치 가능성을 확인하세요 (토큰 절단 아님)")
+            else:
+                print(f"⚠️ [Diagnostic Warning - Formatting] {p}: {run_tag}Isolated unparsed/missing prompts ({pids_str}): Check delimiter formatting (Not token truncation)")
         print("=" * 80 + "\n")
 
 if __name__ == "__main__":

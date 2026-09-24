@@ -751,6 +751,95 @@ class TestMegaBatchAndDashboard(unittest.TestCase):
         warn_keys = list(results["truncation_warnings"].keys())
         self.assertTrue(any("r2" in k or results["truncation_warnings"][k].get("run") == "r2" for k in warn_keys))
 
+    def test_parse_mega_batch_delimiter_number_without_t(self):
+        """Verify headers parse numbers cleanly with or without T, and with various banner styles."""
+        sample_text = """
+=== [01] ===
+⟪
+1. 언어: 한국어
+⟫
+
+=== 2 ===
+⟪
+2. 번역: 완료
+⟫
+
+## 3
+⟪
+3. 어휘: 성공
+⟫
+
+### [04]
+⟪
+4. 결과: 테스트 4
+⟫
+
+--- [05] ---
+⟪
+5. 결과: 테스트 5
+⟫
+
+--- 6 ---
+⟪
+6. 결과: 테스트 6
+⟫
+
+=== [Prompt 7] ===
+⟪
+7. 결과: 테스트 7
+⟫
+
+=== [Q8] ===
+⟪
+8. 결과: 테스트 8
+⟫
+
+### **[09]**
+⟪
+9. 결과: 테스트 9
+⟫
+
+=== [10] ===
+⟪
+10. 결과: 테스트 10
+⟫
+"""
+        parsed = sr.parse_mega_batch(sample_text)
+        for i in range(1, 11):
+            pid = f"T{i:02d}"
+            self.assertIn(pid, parsed)
+            self.assertIn(f"{i}.", parsed[pid])
+
+    def test_isolated_missing_prompt_does_not_trigger_token_truncation_warning(self):
+        """Isolated missing prompt (e.g. T15 skipped while T16~T40 succeed) must NOT trigger max_tokens truncation warning."""
+        master = sr.load_master_checks(self.master_path)
+        p_dir = self.responses_dir / "provider_isolated"
+        p_dir.mkdir(parents=True)
+
+        # All 40 prompts EXCEPT T15
+        mega_content = []
+        for pid in sorted(master["prompts"].keys()):
+            if pid == "T15":
+                continue
+            ans = master["prompts"][pid]["expected_marker_content"]
+            mega_content.append(f"=== [{pid}] ===\n⟪\n{ans}\n⟫")
+        (p_dir / "MEGA.md").write_text("\n\n".join(mega_content), encoding="utf-8")
+
+        results = sr.run_scoring(self.master_path, self.responses_dir)
+
+        # Must NOT be in truncation_warnings (falsely blaming provider max_tokens)
+        self.assertNotIn("provider_isolated", results["truncation_warnings"])
+        # Must be in formatting_warnings
+        self.assertIn("provider_isolated", results["formatting_warnings"])
+        fmt_info = results["formatting_warnings"]["provider_isolated"]
+        self.assertEqual(fmt_info["missing_pids"], ["T15"])
+
+        # Check failure reason does NOT blame token limit
+        t15_failures = [f for f in results["failures"] if f["provider"] == "provider_isolated" and f["prompt_id"] == "T15"]
+        self.assertGreater(len(t15_failures), 0)
+        self.assertNotIn("Token Limit Exceeded", t15_failures[0]["reason"])
+        self.assertIn("Formatting/Delimiter Issue", t15_failures[0]["reason"])
+
     def test_html_report_generation(self):
         master = sr.load_master_checks(self.master_path)
         p_dir = self.responses_dir / "provider_fp8"
