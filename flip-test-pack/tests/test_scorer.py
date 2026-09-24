@@ -547,11 +547,13 @@ class TestEndToEndScoringPipeline(unittest.TestCase):
         diff_info = results["pairwise_diff"][pair_key]
         self.assertNotEqual(diff_info["overall_diff_pp"], 0.0)
 
-        # Generate summary markdown report
+        # Generate summary markdown report (verifying clean English default and Korean mode)
         md_report = sr.format_summary_markdown(results)
         self.assertIn("provider_fp8", md_report)
         self.assertIn("provider_fp4", md_report)
-        self.assertIn("동일 하네스 조건에서의 프로바이더 간 출력 차이", md_report)
+        self.assertIn("output divergence across providers under identical harness conditions", md_report)
+        md_report_ko = sr.format_summary_markdown(results, lang="ko")
+        self.assertIn("동일 하네스 조건에서의 프로바이더 간 출력 차이", md_report_ko)
 
     def test_multi_run_evaluation_and_averaging(self):
         # Create a provider with 2 runs having stochastic variance
@@ -589,10 +591,13 @@ class TestEndToEndScoringPipeline(unittest.TestCase):
         disagreement = results["run_disagreements"]["provider_stochastic"]
         self.assertGreater(disagreement, 0.0)
 
-        # Markdown report must contain Run Average section
+        # Markdown report must contain Run Average section (verifying EN default & KO mode)
         md_report = sr.format_summary_markdown(results)
-        self.assertIn("다회차 실행 결과 및 회차 평균", md_report)
-        self.assertIn("회차 간 출력 불일치율", md_report)
+        self.assertIn("Multi-Run Breakdown & Run Average", md_report)
+        self.assertIn("Cross-Run Disagreement Rate", md_report)
+        md_report_ko = sr.format_summary_markdown(results, lang="ko")
+        self.assertIn("다회차 실행 결과 및 회차 평균", md_report_ko)
+        self.assertIn("회차 간 출력 불일치율", md_report_ko)
 
 
 class TestMegaBatchAndDashboard(unittest.TestCase):
@@ -719,10 +724,13 @@ class TestMegaBatchAndDashboard(unittest.TestCase):
         self.assertGreater(len(t26_failures), 0)
         self.assertIn("Token Limit Exceeded", t26_failures[0]["reason"])
 
-        # Markdown report must contain the truncation diagnostic warning
+        # Markdown report must contain the truncation diagnostic warning (verifying EN default & KO mode)
         md_report = sr.format_summary_markdown(results)
-        self.assertIn("토큰 절단 진단 경고", md_report)
-        self.assertIn("T26부터 응답 누락 감지", md_report)
+        self.assertIn("Token Truncation Diagnostic Warnings", md_report)
+        self.assertIn("Output truncated starting at prompt T26", md_report)
+        md_report_ko = sr.format_summary_markdown(results, lang="ko")
+        self.assertIn("토큰 절단 진단 경고", md_report_ko)
+        self.assertIn("T26부터 응답 누락 감지", md_report_ko)
 
     def test_multi_run_truncation_detection(self):
         """In multi-run mode, if r1 is full but r2 is truncated, r2 truncation must be flagged."""
@@ -1171,6 +1179,7 @@ class TestI18nAndDashboardEnhancements(unittest.TestCase):
         self.assertIn("lang-btn-en", html_content)
         self.assertIn("lang-btn-ko", html_content)
         self.assertIn("setLanguage", html_content)
+        self.assertIn("summary::-webkit-details-marker", html_content)
 
         # 2. 5-slot comparison selector
         self.assertIn('id="comparison-section"', html_content)
@@ -1180,11 +1189,25 @@ class TestI18nAndDashboardEnhancements(unittest.TestCase):
         self.assertIn('id="comp-slot-3"', html_content)
         self.assertIn('id="comp-slot-4"', html_content)
         self.assertIn('updateComparison', html_content)
+        self.assertIn('tied_leader', html_content)
+        self.assertIn('all_perfect_label', html_content)
 
-        # 3. 2-depth hierarchical failure accordion
+        # 3. 2-depth hierarchical failure accordion & dual-attribute tags
         self.assertIn("provider-fail-card", html_content)
         self.assertIn("prompt-fail-group", html_content)
         self.assertIn("toggleAllAccordions", html_content)
+        self.assertIn('fail-count-badge', html_content)
+        self.assertIn('data-en="2 Failures"', html_content)
+        self.assertIn('data-ko="2건 실패"', html_content)
+        self.assertIn('prompt-fail-badge', html_content)
+
+        # 4. Korean initial HTML generation
+        html_path_ko = Path(self.temp_dir) / "report_ko.html"
+        html_content_ko = sr.generate_html_report(results, html_path_ko, lang="ko")
+        self.assertIn('<html lang="ko">', html_content_ko)
+        self.assertIn('id="lang-btn-ko" type="button" class="lang-btn active"', html_content_ko)
+        self.assertIn('최대 5개 모델 동시 비교', html_content_ko)
+        self.assertIn('2건 실패', html_content_ko)
 
 
 if __name__ == "__main__":

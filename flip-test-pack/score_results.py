@@ -815,10 +815,12 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
             lines.append("## ⚠️ 토큰 절단 진단 경고 (Truncation Diagnostic Warnings)")
             lines.append("")
             for p, w_info in results["truncation_warnings"].items():
+                rid = w_info.get("run", "")
+                run_tag = f"[{rid}] " if is_runs_mode and rid else ""
                 first_m = w_info.get('first_missing', '')
                 cnt = w_info.get('missing_count', 0)
                 msg = w_info.get('message', '')
-                lines.append(f"> **{p}**: {msg} (누락 문항: {first_m} 외 {cnt-1}개)")
+                lines.append(f"> **{p}**: ⚠️ {run_tag}{msg} (누락 문항: {first_m} 외 {cnt-1}개)")
             lines.append("")
 
         lines.extend([
@@ -867,7 +869,7 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
                 
         has_multi_runs = is_runs_mode or any(len(runs) > 1 for runs in results.get("provider_runs", {}).values())
         if has_multi_runs and results.get("provider_runs"):
-            lines.append("## 3. 다회차 실행 결과 및 회차 평균 (Multi-Run Breakdown & Run Average)")
+            lines.append("## 3. 다회차 실행 결과 및 회차 평균")
             lines.append("")
             lines.append("| 프로바이더 | 회차 (Run) | 점수 | 정확도 (%) |")
             lines.append("| :--- | :---: | :---: | :---: |")
@@ -881,7 +883,7 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
             lines.append("")
 
         if results.get("run_disagreements"):
-            lines.append("## 4. 회차 간 출력 불일치율 (Cross-Run Disagreement Rate)")
+            lines.append("## 4. 회차 간 출력 불일치율")
             lines.append("")
             lines.append("| 프로바이더 | 회차 간 불일치율 (%) |")
             lines.append("| :--- | :---: |")
@@ -894,20 +896,20 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
         lines = [
             "# Zoo Code Custom Mode: CJK-Flip Evaluation Summary",
             "",
-            "> **Measurement Target Declaration**: These results reflect **'output divergence across providers under identical harness conditions'** (동일 하네스 조건에서의 프로바이더 간 출력 차이), NOT 'general model capability'.",
+            "> **Measurement Target Declaration**: These results reflect **'output divergence across providers under identical harness conditions'**, NOT 'general model capability'.",
             ""
         ]
         
         if results.get("truncation_warnings"):
-            lines.append("## ⚠️ Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)")
+            lines.append("## ⚠️ Token Truncation Diagnostic Warnings")
             lines.append("")
             for p, w_info in results["truncation_warnings"].items():
                 rid = w_info.get("run", "")
                 run_tag = f"[{rid}] " if is_runs_mode and rid else ""
                 first_m = w_info.get('first_missing', '')
                 cnt = w_info.get('missing_count', 0)
-                msg = w_info.get('message', '')
-                lines.append(f"> **{p}**: ⚠️ {run_tag}Output truncated starting at prompt {first_m}: Increase Max Output Tokens to 4,096–8,192 ({msg})")
+                missing_text = f" (Missing {cnt} questions)" if cnt else ""
+                lines.append(f"> **{p}**: ⚠️ {run_tag}Output truncated starting at prompt {first_m}: Increase Max Output Tokens to 4,096–8,192{missing_text}")
             lines.append("")
 
         lines.extend([
@@ -956,7 +958,7 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
                 
         has_multi_runs = is_runs_mode or any(len(runs) > 1 for runs in results.get("provider_runs", {}).values())
         if has_multi_runs and results.get("provider_runs"):
-            lines.append("## 3. Multi-Run Breakdown & Run Average (다회차 실행 결과 및 회차 평균)")
+            lines.append("## 3. Multi-Run Breakdown & Run Average")
             lines.append("")
             lines.append("| Provider | Run | Score | Accuracy (%) |")
             lines.append("| :--- | :---: | :---: | :---: |")
@@ -970,7 +972,7 @@ def format_summary_markdown(results: dict, lang: str = "en") -> str:
             lines.append("")
 
         if results.get("run_disagreements"):
-            lines.append("## 4. Cross-Run Disagreement Rate (회차 간 출력 불일치율)")
+            lines.append("## 4. Cross-Run Disagreement Rate")
             lines.append("")
             lines.append("| Provider | Disagreement Rate (%) |")
             lines.append("| :--- | :---: |")
@@ -1076,11 +1078,12 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                     f'<text x="{bx + bar_w/2.0:.1f}" y="{val_y:.1f}" text-anchor="middle" font-size="9" font-weight="600" fill="currentColor">{pct:.0f}%</text>'
                 )
 
+        cat_initial_sub = cat_ko_name[:16] if lang == "ko" else cat_en_name[:16]
         cat_labels.append(
             f'<text x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 22}" text-anchor="middle" font-size="12" font-weight="700" fill="currentColor">{cat_short_code}</text>'
         )
         cat_labels.append(
-            f'<text class="cat-label-sub" data-en="{html.escape(cat_en_name[:16])}" data-ko="{html.escape(cat_ko_name[:16])}" x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 38}" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.75">{html.escape(cat_en_name[:16])}</text>'
+            f'<text class="cat-label-sub" data-en="{html.escape(cat_en_name[:16])}" data-ko="{html.escape(cat_ko_name[:16])}" x="{slot_x + slot_w/2.0:.1f}" y="{y_0 + 38}" text-anchor="middle" font-size="9.5" fill="currentColor" opacity="0.75">{html.escape(cat_initial_sub)}</text>'
         )
 
     html_legend_items = []
@@ -1206,27 +1209,28 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         acc = sc.get("accuracy", 0.0)
         mode = provider_modes.get(p, "individual")
         mode_badge = (
-            '<span class="badge badge-mega" data-ko="메가 배치">⚡ Mega-Batch</span>' 
+            f'<span class="badge badge-mega mode-badge" data-en="⚡ Mega-Batch" data-ko="⚡ 메가 배치">{"⚡ 메가 배치" if lang == "ko" else "⚡ Mega-Batch"}</span>' 
             if mode == "mega" 
-            else '<span class="badge badge-individual" data-ko="개별 파일">📄 Individual</span>'
+            else f'<span class="badge badge-individual mode-badge" data-en="📄 Individual" data-ko="📄 개별 파일">{"📄 개별 파일" if lang == "ko" else "📄 Individual"}</span>'
         )
         
-        status_pill = (
-            '<span class="status-pill status-perfect">🏆 Lossless (100%)</span>' if acc >= 99.9 else (
-                '<span class="status-pill status-high">⚡ High Quality</span>' if acc >= 95.0 else (
-                    '<span class="status-pill status-warning">⚠️ Minor Loss</span>' if acc >= 90.0 else
-                    '<span class="status-pill status-danger">❌ Degraded</span>'
-                )
-            )
-        )
+        if acc >= 99.9:
+            sp_en, sp_ko, sp_cls = "🏆 Lossless (100%)", "🏆 무결점 (100%)", "status-perfect"
+        elif acc >= 95.0:
+            sp_en, sp_ko, sp_cls = "⚡ High Quality", "⚡ 고품질", "status-high"
+        elif acc >= 90.0:
+            sp_en, sp_ko, sp_cls = "⚠️ Minor Loss", "⚠️ 미세 손실", "status-warning"
+        else:
+            sp_en, sp_ko, sp_cls = "❌ Degraded", "❌ 품질 저하", "status-danger"
+        status_pill = f'<span class="status-pill {sp_cls}" data-en="{sp_en}" data-ko="{sp_ko}">{sp_ko if lang == "ko" else sp_en}</span>'
 
         p_fails = [f for f in failures if f.get("provider") == p]
 
         if is_runs_mode:
-            pts_label = "Average Score (Run Avg)"
+            pts_label = "평균 획득 점수 (회차 평균)" if lang == "ko" else "Average Score (Run Avg)"
             pts_earned = sc.get("avg_points", sc.get("total_points", 0.0))
         else:
-            pts_label = "Total Score"
+            pts_label = "총 획득 점수" if lang == "ko" else "Total Score"
             pts_earned = sc.get("total_points", 0.0)
 
         runs_breakdown_html = ""
@@ -1236,10 +1240,11 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             for rid, rst in sorted(p_runs.items()):
                 run_items.append(f'<span class="run-chip">{rid}: <strong>{rst["accuracy"]:.1f}%</strong></span>')
             dis_rate = run_disagreements.get(p, 0.0)
+            dis_label = "회차 간 불일치율:" if lang == "ko" else "Cross-run disagreement:"
             runs_breakdown_html = f"""
             <div class="runs-container">
                 <div class="runs-chips">{' '.join(run_items)}</div>
-                <div class="disagreement-stat"><span data-i18n="runs_disagreement">Cross-run disagreement:</span> <strong>{dis_rate:.2f}%</strong></div>
+                <div class="disagreement-stat"><span data-i18n="runs_disagreement">{dis_label}</span> <strong>{dis_rate:.2f}%</strong></div>
             </div>
             """
 
@@ -1258,7 +1263,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             </div>
             <div class="metrics-grid">
                 <div class="metric-item">
-                    <span class="metric-label" data-i18n="pass_rate_metric">Check Pass Rate</span>
+                    <span class="metric-label" data-i18n="pass_rate_metric">{"체크 통과율" if lang == "ko" else "Check Pass Rate"}</span>
                     <span class="metric-val">{sc.get('passed_checks', 0)} / {sc.get('total_checks', 0)} ({sc.get('passed_checks', 0)/(sc.get('total_checks', 1) or 1)*100:.1f}%)</span>
                 </div>
                 <div class="metric-item">
@@ -1266,7 +1271,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                     <span class="metric-val">{pts_earned:.1f} / {sc.get('max_points', 0.0):.1f} pt</span>
                 </div>
                 <div class="metric-item">
-                    <span class="metric-label" data-i18n="fails_metric">Failed Checks</span>
+                    <span class="metric-label" data-i18n="fails_metric">{"실패 체크 건수" if lang == "ko" else "Failed Checks"}</span>
                     <span class="metric-val failure-count">{len(p_fails)}</span>
                 </div>
             </div>
@@ -1281,16 +1286,16 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         for p, w_info in truncation_warnings.items():
             first_m = w_info.get('first_missing', '')
             cnt = w_info.get('missing_count', 0)
-            msg = w_info.get('message', '')
+            msg_ko = w_info.get('message', '')
+            msg_en = f"Output truncated starting at question {first_m}"
             banner_items.append(f"""
             <div class="truncation-item">
                 <div class="truncation-header">
-                    <span class="trunc-badge">⚠️ Output Truncated</span>
-                    <strong>{html.escape(p)}</strong>: Output truncated starting at prompt <strong>{first_m}</strong> ({msg})
+                    <span class="trunc-badge" data-en="⚠️ Output Truncated" data-ko="⚠️ 응답 누락 감지">{"⚠️ 응답 누락 감지" if lang == "ko" else "⚠️ Output Truncated"}</span>
+                    <strong>{html.escape(p)}</strong>: <span class="trunc-msg" data-en="Output truncated starting at prompt {first_m} ({msg_en})" data-ko="{first_m}부터 응답 누락 감지 ({msg_ko})">{f'{first_m}부터 응답 누락 감지 ({msg_ko})' if lang == "ko" else f'Output truncated starting at prompt {first_m} ({msg_en})'}</span>
                 </div>
-                <p class="truncation-desc">
-                    Due to provider output token constraints (<code>max_tokens</code>), output stopped at question <strong>{first_m}</strong>.
-                    The remaining {cnt} questions were scored as 0. Please raise Max Output Tokens to <strong>4,096 ~ 8,192</strong>.
+                <p class="truncation-desc" data-en="Due to provider output token constraints (max_tokens), output stopped at question {first_m}. The remaining {cnt} questions were scored as 0. Please raise Max Output Tokens to 4,096 ~ 8,192." data-ko="프로바이더 출력 토큰 제약(max_tokens)으로 인해 {first_m} 문항부터 응답이 중단되었습니다. 누락된 {cnt}개 문항은 0점 처리되었습니다. Max Output Tokens 설정을 4,096~8,192로 상향하세요.">
+                    {"프로바이더 출력 토큰 제약(max_tokens)으로 인해 " + str(first_m) + " 문항부터 응답이 중단되었습니다. 누락된 " + str(cnt) + "개 문항은 0점 처리되었습니다. Max Output Tokens 설정을 4,096~8,192로 상향하세요." if lang == "ko" else "Due to provider output token constraints (<code>max_tokens</code>), output stopped at question <strong>" + str(first_m) + "</strong>. The remaining " + str(cnt) + " questions were scored as 0. Please raise Max Output Tokens to <strong>4,096 ~ 8,192</strong>."}
                 </p>
             </div>
             """)
@@ -1298,7 +1303,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <div class="truncation-box">
             <div class="truncation-icon">⚠️</div>
             <div class="truncation-body">
-                <h3 data-i18n="truncation_title">Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)</h3>
+                <h3 data-i18n="truncation_title">{"토큰 절단 진단 경고 (Truncation Warnings)" if lang == "ko" else "Token Truncation Diagnostic Warnings (토큰 절단 진단 경고)"}</h3>
                 {' '.join(banner_items)}
             </div>
         </div>
@@ -1326,7 +1331,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
     elif not failures:
         failures_accordion_html = """
         <div class="card all-pass-card">
-            <h3 data-i18n="all_pass_title" data-ko="전수 체크 100% 통과">🎉 All Checks Passed (Zero Failures)</h3>
+            <h3 data-i18n="all_pass_title" data-ko="전수 체크 100% 무결점 통과">🎉 All Checks Passed (Zero Failures)</h3>
             <p data-i18n="all_pass_desc">Every single evaluation prompt and deterministic check passed with 100% perfection.</p>
         </div>
         """
@@ -1341,7 +1346,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                 provider_accordion_items.append(f"""
                 <div class="provider-clean-card">
                     <span class="clean-icon">🎉</span>
-                    <strong>{html.escape(p)}</strong> &mdash; <span data-i18n="zero_failures_label">Zero Failures (100% Pass)</span>
+                    <strong>{html.escape(p)}</strong> &mdash; <span data-i18n="zero_failures_label">{"전수 체크 100% 무결점 통과 (Zero Failures)" if lang == "ko" else "Zero Failures (100% Pass)"}</span>
                 </div>
                 """)
             else:
@@ -1351,6 +1356,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                     p_cat = chk_failures[0].get("category", "")
                     cat_en = format_category_name(p_cat, "en")
                     cat_ko = format_category_name(p_cat, "ko")
+                    cur_cat_title = cat_ko if lang == "ko" else cat_en
                     
                     check_items_html = []
                     for f in chk_failures:
@@ -1358,21 +1364,21 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                         <div class="check-fail-item">
                             <div class="check-fail-header">
                                 <span class="check-id-badge">{f['check_id']}</span>
-                                <span class="check-type-tag">Type: <code>{f['check_type']}</code></span>
-                                <span class="check-run-tag">Run: <code>{f['run']}</code></span>
+                                <span class="check-type-tag"><span class="tag-type-label" data-en="Type:" data-ko="타입:">{"타입:" if lang == "ko" else "Type:"}</span> <code>{f['check_type']}</code></span>
+                                <span class="check-run-tag"><span class="tag-run-label" data-en="Run:" data-ko="회차:">{"회차:" if lang == "ko" else "Run:"}</span> <code>{f['run']}</code></span>
                             </div>
                             <div class="fail-grid">
                                 <div class="fail-col">
-                                    <span class="fail-field-label" data-i18n="expected_label">Expected:</span>
+                                    <span class="fail-field-label" data-i18n="expected_label">{"기대값 (Expected):" if lang == "ko" else "Expected:"}</span>
                                     <pre class="code-box expected-box"><code>{html.escape(str(f['expected']))}</code></pre>
                                 </div>
                                 <div class="fail-col">
-                                    <span class="fail-field-label" data-i18n="actual_label">Actual Model Output:</span>
+                                    <span class="fail-field-label" data-i18n="actual_label">{"실제 출력값 (Actual):" if lang == "ko" else "Actual Model Output:"}</span>
                                     <pre class="code-box actual-box"><code>{html.escape(str(f['actual']))}</code></pre>
                                 </div>
                             </div>
                             <div class="fail-reason">
-                                <strong data-i18n="reason_label">Failure Reason:</strong> {html.escape(f['reason'])}
+                                <strong data-i18n="reason_label">{"판정 사유 (Reason):" if lang == "ko" else "Failure Reason:"}</strong> {html.escape(f['reason'])}
                             </div>
                         </div>
                         """)
@@ -1382,8 +1388,8 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                         <summary class="prompt-fail-summary">
                             <span class="chevron">▶</span>
                             <span class="prompt-pill">[{pid}]</span>
-                            <strong class="prompt-title" data-en="{cat_en}" data-ko="{cat_ko}">{cat_en}</strong>
-                            <span class="badge badge-warning">{len(chk_failures)} checks failed</span>
+                            <strong class="prompt-title" data-en="{cat_en}" data-ko="{cat_ko}">{cur_cat_title}</strong>
+                            <span class="badge badge-warning prompt-fail-badge" data-en="{len(chk_failures)} checks failed" data-ko="{len(chk_failures)}개 체크 실패">{f"{len(chk_failures)}개 체크 실패" if lang == "ko" else f"{len(chk_failures)} checks failed"}</span>
                         </summary>
                         <div class="prompt-fail-body">
                             {' '.join(check_items_html)}
@@ -1397,10 +1403,10 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                         <div class="summary-left">
                             <span class="chevron">▶</span>
                             <strong class="provider-name">{html.escape(p)}</strong>
-                            <span class="badge badge-fail">{p_fail_count} Failures</span>
+                            <span class="badge badge-fail fail-count-badge" data-en="{p_fail_count} Failures" data-ko="{p_fail_count}건 실패">{f"{p_fail_count}건 실패" if lang == "ko" else f"{p_fail_count} Failures"}</span>
                         </div>
                         <div class="summary-right">
-                            <span class="badge badge-individual">Accuracy: {p_acc:.2f}%</span>
+                            <span class="badge badge-individual prov-acc-badge" data-en="Accuracy: {p_acc:.2f}%" data-ko="정확도: {p_acc:.2f}%">{f"정확도: {p_acc:.2f}%" if lang == "ko" else f"Accuracy: {p_acc:.2f}%"}</span>
                         </div>
                     </summary>
                     <div class="provider-fail-body">
@@ -1413,12 +1419,12 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <div class="card failure-card">
             <div class="card-header">
                 <div>
-                    <h3 data-i18n="failures_title">🔍 Failure Diagnostics & Detailed Breakdown (2-Depth Hierarchy)</h3>
-                    <span class="badge badge-fail" data-i18n="failures_badge">Total {len(failures)} Failed Checks</span>
+                    <h3 data-i18n="failures_title">{"🔍 실패 체크 상세 내역 (2단계 계층형 아코디언)" if lang == "ko" else "🔍 Failure Diagnostics & Detailed Breakdown (2-Depth Hierarchy)"}</h3>
+                    <span class="badge badge-fail" data-i18n="failures_badge">{"총 실패 " + str(len(failures)) + "건" if lang == "ko" else "Total " + str(len(failures)) + " Failed Checks"}</span>
                 </div>
                 <div class="accordion-controls">
-                    <button type="button" class="action-btn" onclick="toggleAllAccordions(true)" data-i18n="expand_all">⊞ Expand All</button>
-                    <button type="button" class="action-btn" onclick="toggleAllAccordions(false)" data-i18n="collapse_all">⊟ Collapse All</button>
+                    <button type="button" class="action-btn" onclick="toggleAllAccordions(true)" data-i18n="expand_all">{"⊞ 모두 펴기" if lang == "ko" else "⊞ Expand All"}</button>
+                    <button type="button" class="action-btn" onclick="toggleAllAccordions(false)" data-i18n="collapse_all">{"⊟ 모두 접기" if lang == "ko" else "⊟ Collapse All"}</button>
                 </div>
             </div>
             <div class="provider-accordion-list">
@@ -1447,13 +1453,14 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                 acc_list.append(rstats['accuracy'])
             avg_acc = sum(acc_list) / len(acc_list) if acc_list else 0.0
             dis_r = run_disagreements.get(p, 0.0)
+            dis_label = "회차 불일치율:" if lang == "ko" else "Disagreement:"
             run_table_rows.append(f"""
             <tr class="row-avg">
                 <td><strong>{html.escape(p)}</strong></td>
-                <td><strong data-i18n="avg_row_label">Run Average</strong></td>
+                <td><strong data-i18n="avg_row_label">{"회차 평균" if lang == "ko" else "Run Average"}</strong></td>
                 <td>-</td>
                 <td><strong class="color-accent">{avg_acc:.2f}%</strong></td>
-                <td>Disagreement: <strong>{dis_r:.2f}%</strong></td>
+                <td><span data-i18n="disagreement_col_label">{dis_label}</span> <strong>{dis_r:.2f}%</strong></td>
             </tr>
             """)
 
@@ -1461,18 +1468,18 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h3 data-i18n="multi_run_table_title">🔁 Multi-Run Breakdown & Run Average</h3>
-                    <span class="badge badge-accent">Variance & Reliability Check</span>
+                    <h3 data-i18n="multi_run_table_title">{"🔁 다회차 실행 결과 및 회차 평균" if lang == "ko" else "🔁 Multi-Run Breakdown & Run Average"}</h3>
+                    <span class="badge badge-accent" data-i18n="variance_badge">{"분산 및 신뢰도 검증" if lang == "ko" else "Variance & Reliability Check"}</span>
                 </div>
             </div>
             <table class="report-table">
                 <thead>
                     <tr>
-                        <th data-i18n="model_col">Provider</th>
-                        <th>Run</th>
-                        <th data-i18n="pts_col">Score</th>
-                        <th data-i18n="acc_col">Accuracy (%)</th>
-                        <th>Passed Checks / Notes</th>
+                        <th data-i18n="model_col">{"모델 / 프로바이더" if lang == "ko" else "Provider"}</th>
+                        <th data-i18n="run_col">{"회차" if lang == "ko" else "Run"}</th>
+                        <th data-i18n="pts_col">{"획득 점수" if lang == "ko" else "Score"}</th>
+                        <th data-i18n="acc_col">{"정확도 (%)" if lang == "ko" else "Accuracy (%)"}</th>
+                        <th data-i18n="passed_notes_col">{"통과 체크 / 비고" if lang == "ko" else "Passed Checks / Notes"}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1541,10 +1548,12 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         fail_legend_items = []
         for cat in categories:
             c_code = cat.split("_")[0]
-            c_name = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+            c_name_en = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+            c_name_ko = CATEGORY_TRANSLATIONS["ko"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+            cur_cat_name = c_name_ko if lang == "ko" else c_name_en
             fail_legend_items.append(
                 f'<div class="legend-item"><span class="legend-color-dot" style="background-color: {cat_color_map[cat]};"></span>'
-                f'<span class="legend-text">{c_code} {html.escape(c_name)}</span></div>'
+                f'<span class="legend-text fail-legend-label" data-en="{c_code} {html.escape(c_name_en)}" data-ko="{c_code} {html.escape(c_name_ko)}">{c_code} {html.escape(cur_cat_name)}</span></div>'
             )
         fail_chart_legend = f'<div class="chart-legend">{" ".join(fail_legend_items)}</div>'
 
@@ -1552,8 +1561,8 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <div class="card">
             <div class="card-header">
                 <div>
-                    <h3 data-i18n="fail_dist_title">📉 Failure Count Distribution by Category</h3>
-                    <span class="badge badge-fail" data-i18n="fail_dist_badge">Cumulative Failed Checks: {len(failures)}</span>
+                    <h3 data-i18n="fail_dist_title">{"📉 실패 건수 카테고리 분포 (Failure Distribution)" if lang == "ko" else "📉 Failure Count Distribution by Category"}</h3>
+                    <span class="badge badge-fail" data-i18n="fail_dist_badge">{"누적 실패 체크: " + str(len(failures)) + "건" if lang == "ko" else "Cumulative Failed Checks: " + str(len(failures))}</span>
                 </div>
                 {fail_chart_legend}
             </div>
@@ -1597,10 +1606,12 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             for c_i, cat in enumerate(categories):
                 cdiff = cat_diffs.get(cat, 0.0)
                 c_code = cat.split("_")[0]
-                c_name = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+                c_name_en = CATEGORY_TRANSLATIONS["en"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+                c_name_ko = CATEGORY_TRANSLATIONS["ko"].get(c_code, cat.split("_")[1] if "_" in cat else cat)
+                cur_cname = c_name_ko if lang == "ko" else c_name_en
                 row_y = 48.0 + c_i * 34.0
                 p_bars.append(
-                    f'<text x="{p_center - p_avail - 15}" y="{row_y + 14}" text-anchor="end" font-size="11" font-weight="600" fill="currentColor">{c_code} {c_name}</text>'
+                    f'<text class="pairwise-cat-label" data-en="{c_code} {html.escape(c_name_en)}" data-ko="{c_code} {html.escape(c_name_ko)}" x="{p_center - p_avail - 15}" y="{row_y + 14}" text-anchor="end" font-size="11" font-weight="600" fill="currentColor">{c_code} {html.escape(cur_cname)}</text>'
                 )
                 if cdiff >= 0:
                     bw = cdiff * p_scale
@@ -1626,7 +1637,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             <div style="margin-bottom: 24px; border-bottom: 1px dashed var(--card-border); padding-bottom: 18px;">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                     <strong>{html.escape(pair_key)}</strong>
-                    <span class="badge badge-accent">Overall Delta: <strong>{diff_info.get('overall_diff_pp', 0.0):+.2f}%p</strong></span>
+                    <span class="badge badge-accent"><span class="pair-delta-label" data-en="Overall Delta:" data-ko="전체 편차:">{"전체 편차:" if lang == "ko" else "Overall Delta:"}</span> <strong>{diff_info.get('overall_diff_pp', 0.0):+.2f}%p</strong></span>
                 </div>
                 <svg viewBox="0 0 960 360" class="chart-svg" xmlns="http://www.w3.org/2000/svg">
                     <g class="diff-grid">{' '.join(p_grid)}</g>
@@ -1640,9 +1651,9 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             <summary class="card-header" style="cursor: pointer; user-select: none;">
                 <div style="display: flex; align-items: center; gap: 8px;">
                     <span class="chevron">▶</span>
-                    <h3 data-i18n="pairwise_title">⚖️ Pairwise Divergence Reference (%p)</h3>
+                    <h3 data-i18n="pairwise_title">{"⚖️ 프로바이더 쌍별 편차 분석 (%p)" if lang == "ko" else "⚖️ Pairwise Divergence Reference (%p)"}</h3>
                 </div>
-                <span class="badge badge-accent">{len(pairwise_diff)} Pairs Available</span>
+                <span class="badge badge-accent pairwise-pairs-badge" data-en="{len(pairwise_diff)} Pairs Available" data-ko="{len(pairwise_diff)}개 프로바이더 쌍">{f"{len(pairwise_diff)}개 프로바이더 쌍" if lang == "ko" else f"{len(pairwise_diff)} Pairs Available"}</span>
             </summary>
             <div style="padding-top: 16px;">
                 {' '.join(pair_cards)}
@@ -1668,7 +1679,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
 
     # Assemble HTML document
     html_doc = f"""<!DOCTYPE html>
-<html lang="en">
+<html lang="{lang}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -2074,6 +2085,17 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             background: rgba(100, 116, 139, 0.15);
             color: var(--text-muted);
         }}
+        .perfect-pill {{
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+        }}
+
+        summary {{
+            list-style: none;
+        }}
+        summary::-webkit-details-marker {{
+            display: none;
+        }}
 
         /* 2-Depth Failure Accordion */
         .accordion-controls {{
@@ -2337,20 +2359,20 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
     <div class="container">
         <header class="header">
             <div class="title-group">
-                <h1 data-i18n="title" data-ko="Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드">Zoo Code Custom Mode — CJK-Flip Evaluation Dashboard</h1>
-                <p class="subtitle" data-i18n="subtitle">Deterministic Output Quality & Fine-Grained Divergence Analysis under Identical Harness Conditions</p>
+                <h1 data-i18n="title">{"Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드" if lang == "ko" else "Zoo Code Custom Mode — CJK-Flip Evaluation Dashboard"}</h1>
+                <p class="subtitle" data-i18n="subtitle">{"동일 하네스 조건에서의 프로바이더 간 결정적 출력 차이 정밀 분석" if lang == "ko" else "Deterministic Output Quality & Fine-Grained Divergence Analysis under Identical Harness Conditions"}</p>
                 <div class="meta-pills">
-                    <span class="pill" data-i18n="prompts_pill">Prompts: 40</span>
-                    <span class="pill" data-i18n="checks_pill">Deterministic Checks: 298</span>
-                    <span class="pill" data-i18n="mode_pill">Mode: {'Multi-Run Analysis (--runs)' if is_runs_mode else 'Single-Run (Standard)'}</span>
+                    <span class="pill" data-i18n="prompts_pill">{"평가 문항: 40개" if lang == "ko" else "Prompts: 40"}</span>
+                    <span class="pill" data-i18n="checks_pill">{"결정적 체크: 298개" if lang == "ko" else "Deterministic Checks: 298"}</span>
+                    <span class="pill" data-i18n="mode_pill">{("모드: 다회차 분석 (--runs)" if is_runs_mode else "모드: 단일 회차 (Standard)") if lang == "ko" else ("Mode: Multi-Run Analysis (--runs)" if is_runs_mode else "Mode: Single-Run (Standard)")}</span>
                 </div>
             </div>
             <div class="header-actions">
                 <div class="lang-switch">
-                    <button id="lang-btn-en" type="button" class="lang-btn active" onclick="setLanguage('en')">EN</button>
-                    <button id="lang-btn-ko" type="button" class="lang-btn" onclick="setLanguage('ko')">KO</button>
+                    <button id="lang-btn-en" type="button" class="lang-btn{' active' if lang != 'ko' else ''}" onclick="setLanguage('en')">EN</button>
+                    <button id="lang-btn-ko" type="button" class="lang-btn{' active' if lang == 'ko' else ''}" onclick="setLanguage('ko')">KO</button>
                 </div>
-                <button type="button" class="theme-btn" onclick="toggleTheme()" data-i18n="theme_btn">🌓 Theme</button>
+                <button type="button" class="theme-btn" onclick="toggleTheme()" data-i18n="theme_btn">{"🌓 테마 전환" if lang == "ko" else "🌓 Theme"}</button>
             </div>
         </header>
 
@@ -2364,30 +2386,30 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <section class="card comparison-card" id="comparison-section">
             <div class="card-header">
                 <div>
-                    <h3 data-i18n="comp_title">⚖️ Multi-Model Comparison (1:1:1:1:1 Selector)</h3>
-                    <span class="badge badge-accent" data-i18n="comp_badge">Select up to 5 models to compare head-to-head</span>
+                    <h3 data-i18n="comp_title">{"⚖️ 최대 5개 모델 동시 비교 (1:1:1:1:1 Selector)" if lang == "ko" else "⚖️ Multi-Model Comparison (1:1:1:1:1 Selector)"}</h3>
+                    <span class="badge badge-accent" data-i18n="comp_badge">{"최대 5개 모델을 선택하여 다각도로 직접 비교 분석" if lang == "ko" else "Select up to 5 models to compare head-to-head"}</span>
                 </div>
-                <button type="button" class="action-btn" onclick="resetComparisonSlots()" data-i18n="comp_reset">↺ Reset Selection</button>
+                <button type="button" class="action-btn" onclick="resetComparisonSlots()" data-i18n="comp_reset">{"↺ 슬롯 초기화" if lang == "ko" else "↺ Reset Selection"}</button>
             </div>
             <div class="slots-bar">
                 <div class="slot-box" style="border-top-color: #2563eb;">
-                    <label for="comp-slot-0"><span class="slot-num" data-i18n="slot1">Slot 1</span></label>
+                    <label for="comp-slot-0"><span class="slot-num" data-i18n="slot1">{"슬롯 1" if lang == "ko" else "Slot 1"}</span></label>
                     <select id="comp-slot-0" class="slot-select" onchange="updateComparison()"></select>
                 </div>
                 <div class="slot-box" style="border-top-color: #10b981;">
-                    <label for="comp-slot-1"><span class="slot-num" data-i18n="slot2">Slot 2</span></label>
+                    <label for="comp-slot-1"><span class="slot-num" data-i18n="slot2">{"슬롯 2" if lang == "ko" else "Slot 2"}</span></label>
                     <select id="comp-slot-1" class="slot-select" onchange="updateComparison()"></select>
                 </div>
                 <div class="slot-box" style="border-top-color: #d97706;">
-                    <label for="comp-slot-2"><span class="slot-num" data-i18n="slot3">Slot 3</span></label>
+                    <label for="comp-slot-2"><span class="slot-num" data-i18n="slot3">{"슬롯 3" if lang == "ko" else "Slot 3"}</span></label>
                     <select id="comp-slot-2" class="slot-select" onchange="updateComparison()"></select>
                 </div>
                 <div class="slot-box" style="border-top-color: #8b5cf6;">
-                    <label for="comp-slot-3"><span class="slot-num" data-i18n="slot4">Slot 4</span></label>
+                    <label for="comp-slot-3"><span class="slot-num" data-i18n="slot4">{"슬롯 4" if lang == "ko" else "Slot 4"}</span></label>
                     <select id="comp-slot-3" class="slot-select" onchange="updateComparison()"></select>
                 </div>
                 <div class="slot-box" style="border-top-color: #ec4899;">
-                    <label for="comp-slot-4"><span class="slot-num" data-i18n="slot5">Slot 5</span></label>
+                    <label for="comp-slot-4"><span class="slot-num" data-i18n="slot5">{"슬롯 5" if lang == "ko" else "Slot 5"}</span></label>
                     <select id="comp-slot-4" class="slot-select" onchange="updateComparison()"></select>
                 </div>
             </div>
@@ -2400,8 +2422,8 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         <section class="card">
             <div class="card-header">
                 <div>
-                    <h3 data-i18n="overall_chart_title" data-ko="카테고리별 정확도 그룹 차트">📊 Category-Level Accuracy Grouped Chart</h3>
-                    <span class="badge badge-accent" data-i18n="overall_chart_badge">Provider Run-Average Accuracy (%)</span>
+                    <h3 data-i18n="overall_chart_title">{"📊 카테고리별 정확도 그룹 차트" if lang == "ko" else "📊 Category-Level Accuracy Grouped Chart"}</h3>
+                    <span class="badge badge-accent" data-i18n="overall_chart_badge">{"프로바이더별 회차 평균 정확도 (%)" if lang == "ko" else "Provider Run-Average Accuracy (%)"}</span>
                 </div>
                 {html_legend}
             </div>
@@ -2419,8 +2441,8 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         {pairwise_reference_html}
 
         <footer class="footer">
-            <p><strong data-i18n="target_dec_label">Measurement Target Declaration</strong>: <span data-i18n="target_declaration">These results measure 'output divergence across providers under identical harness conditions', NOT 'general model capability'.</span></p>
-            <p data-i18n="footer_sub">CJK-Flip Test Pack &bull; 100% Deterministic Rule Engine &bull; Zero External Dependency</p>
+            <p><strong data-i18n="target_dec_label">{"측정 대상 명명" if lang == "ko" else "Measurement Target Declaration"}</strong>: <span data-i18n="target_declaration">{"본 결과는 '모델 품질'이 아니라 '동일 하네스 조건에서의 프로바이더 간 출력 차이'를 나타냅니다." if lang == "ko" else "These results measure 'output divergence across providers under identical harness conditions', NOT 'general model capability'."}</span></p>
+            <p data-i18n="footer_sub">{"CJK-Flip Test Pack • 100% 결정적 규칙 엔진 • 외부 의존성 제로" if lang == "ko" else "CJK-Flip Test Pack • 100% Deterministic Rule Engine • Zero External Dependency"}</p>
         </footer>
     </div>
 
@@ -2488,7 +2510,14 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             multi_run_table_title: "🔁 Multi-Run Breakdown & Run Average",
             avg_row_label: "Run Average",
             mega_badge: "⚡ Mega-Batch",
-            indiv_badge: "📄 Individual"
+            indiv_badge: "📄 Individual",
+            all_perfect_label: "None (All Perfect)",
+            leader_ref: "Leader (Ref)",
+            tied_leader: "Tied 1st",
+            run_col: "Run",
+            passed_notes_col: "Passed Checks / Notes",
+            variance_badge: "Variance & Reliability Check",
+            disagreement_col_label: "Disagreement:"
         }},
         ko: {{
             title: "Zoo Code Custom Mode — CJK-Flip 평가 결과 대시보드",
@@ -2549,7 +2578,14 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             multi_run_table_title: "🔁 다회차 실행 결과 및 회차 평균",
             avg_row_label: "회차 평균",
             mega_badge: "⚡ 메가 배치",
-            indiv_badge: "📄 개별 파일"
+            indiv_badge: "📄 개별 파일",
+            all_perfect_label: "없음 (전원 100% 만점)",
+            leader_ref: "1위 (기준)",
+            tied_leader: "1위 (동률 기준)",
+            run_col: "회차",
+            passed_notes_col: "통과 체크 / 비고",
+            variance_badge: "분산 및 신뢰도 검증",
+            disagreement_col_label: "회차 불일치율:"
         }}
     }};
 
@@ -2634,13 +2670,20 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         const rankBadges = ["🥇 1st", "🥈 2nd", "🥉 3rd", "4th", "5th"];
         const rankBadgesKo = ["🥇 1위", "🥈 2위", "🥉 3위", "4위", "5위"];
         let tableRows = "";
+        let currentRank = 1;
         models.forEach((m, idx) => {{
+            if (idx > 0 && Math.abs(m.accuracy - models[idx - 1].accuracy) > 0.001) {{
+                currentRank = idx + 1;
+            }}
+            const isLeader = Math.abs(m.accuracy - topAcc) < 0.001;
             const delta = m.accuracy - topAcc;
-            const deltaStr = idx === 0 
-                ? `<span class="badge badge-accent">${{currentLang === 'ko' ? '1위 (기준)' : 'Leader (Ref)'}}</span>` 
+            const deltaStr = isLeader 
+                ? `<span class="badge badge-accent">${{idx > 0 ? t.tied_leader : t.leader_ref}}</span>` 
                 : `<strong style="color: #ef4444;">${{delta.toFixed(2)}}%p</strong>`;
             const color = (BENCHMARK_DATA.provider_colors && BENCHMARK_DATA.provider_colors[m.provider]) || SLOT_COLORS[idx % SLOT_COLORS.length];
-            const rBadge = currentLang === 'ko' ? rankBadgesKo[idx] : rankBadges[idx];
+            const rBadge = currentRank <= 5 
+                ? (currentLang === 'ko' ? rankBadgesKo[currentRank - 1] : rankBadges[currentRank - 1]) 
+                : `${{currentRank}}`;
             const disVal = m.disagreement !== undefined ? `${{m.disagreement.toFixed(1)}}%` : '-';
             const modeBadge = m.mode === 'mega' 
                 ? `<span class="badge badge-mega">${{t.mega_badge}}</span>` 
@@ -2728,7 +2771,7 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
                 svgBars += `<rect x="${{bx.toFixed(1)}}" y="${{by.toFixed(1)}}" width="${{barW.toFixed(1)}}" height="${{bH.toFixed(1)}}" rx="3" fill="${{col}}">
                     <title>${{escapeHtml(m.provider)}} - ${{cCode}} (${{catName}}): ${{cScore.toFixed(1)}}%</title>
                 </rect>`;
-                if (barW >= 14.0) {{
+                if (barW >= 11.0) {{
                     svgBars += `<text x="${{(bx + barW / 2).toFixed(1)}}" y="${{Math.max(15, by - 5).toFixed(1)}}" text-anchor="middle" font-size="9" font-weight="600" fill="currentColor">${{cScore.toFixed(0)}}%</text>`;
                 }}
             }});
@@ -2792,9 +2835,16 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             const spread = maxScore - minScore;
 
             let bestBadges = bestModels.map(m => `<span class="highlight-pill best-pill">🏆 ${{escapeHtml(m.provider)}} (${{maxScore.toFixed(1)}}%)</span>`).join(" ");
-            let worstBadges = isTied 
-                ? `<span class="highlight-pill tied-pill">${{t.tied_label}} (${{maxScore.toFixed(1)}}%)</span>`
-                : worstModels.map(m => `<span class="highlight-pill worst-pill">⚠️ ${{escapeHtml(m.provider)}} (${{minScore.toFixed(1)}}%)</span>`).join(" ");
+            let worstBadges = "";
+            if (isTied) {{
+                if (maxScore >= 99.99) {{
+                    worstBadges = `<span class="highlight-pill perfect-pill">${{t.all_perfect_label}}</span>`;
+                }} else {{
+                    worstBadges = `<span class="highlight-pill tied-pill">${{t.tied_label}} (${{maxScore.toFixed(1)}}%)</span>`;
+                }}
+            }} else {{
+                worstBadges = worstModels.map(m => `<span class="highlight-pill worst-pill">⚠️ ${{escapeHtml(m.provider)}} (${{minScore.toFixed(1)}}%)</span>`).join(" ");
+            }}
 
             highlightCards += `
                 <div class="highlight-card">
@@ -2883,16 +2933,34 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
             }}
         }});
 
-        // Update localized sub-labels in SVG charts
-        document.querySelectorAll('.cat-label-sub').forEach(el => {{
+        // Update all elements with dual-language attributes (data-en and data-ko)
+        const dualAttrSelectors = [
+            '.mode-badge',
+            '.status-pill',
+            '.fail-count-badge',
+            '.prov-acc-badge',
+            '.prompt-fail-badge',
+            '.tag-type-label',
+            '.tag-run-label',
+            '.fail-legend-label',
+            '.pairwise-cat-label',
+            '.pair-delta-label',
+            '.pairwise-pairs-badge',
+            '.trunc-badge',
+            '.trunc-msg',
+            '.truncation-desc',
+            '.prompt-title',
+            '.cat-label-sub'
+        ];
+        document.querySelectorAll(dualAttrSelectors.join(', ')).forEach(el => {{
             const val = el.getAttribute('data-' + lang);
-            if (val) el.textContent = val;
-        }});
-
-        // Update prompt titles in failure accordion
-        document.querySelectorAll('.prompt-title').forEach(el => {{
-            const val = el.getAttribute('data-' + lang);
-            if (val) el.textContent = val;
+            if (val) {{
+                if (el.classList.contains('truncation-desc')) {{
+                    el.innerHTML = val;
+                }} else {{
+                    el.textContent = val;
+                }}
+            }}
         }});
 
         // Update (None) options in comparison dropdowns
@@ -2915,13 +2983,10 @@ def generate_html_report(results: dict, output_path: Path, lang: str = "en") -> 
         // Comparison Slots
         initComparisonSlots();
 
-        // Language (English default unless explicitly saved as ko)
-        const savedLang = localStorage.getItem('cjk_flip_lang');
-        if (savedLang === 'ko') {{
-            setLanguage('ko');
-        }} else {{
-            setLanguage('en');
-        }}
+        // Language: prioritize localStorage if explicitly set, else use the generated page language
+        const defaultLang = "{lang}";
+        const savedLang = localStorage.getItem('cjk_flip_lang') || defaultLang;
+        setLanguage(savedLang === 'ko' ? 'ko' : 'en');
     }})();
     </script>
 </body>

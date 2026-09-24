@@ -32,7 +32,8 @@ VS Code 기반 LLM 보조 도구(Zoo Code 등)는 동일한 모델 가중치를 
 flip-test-pack/
 ├── README.md              # 영문 상세 가이드 (English Documentation)
 ├── README_KO.md           # 준비·실행·판정 절차, 통제 체크리스트, 통계적 한계, 가정 (본 문서, 한국어)
-├── run_score.bat          # [1-Click] 윈도우 탐색기 더블클릭 단일 회차 채점 및 대시보드 브라우저 자동 팝업
+├── run_score.bat          # [1-Click] 윈도우 탐색기 더블클릭 단일 회차 채점 및 대시보드 브라우저 자동 팝업 (영문 기본)
+├── run_score_ko.bat       # [1-Click] 윈도우 탐색기 더블클릭 한국어 모드 단일 회차 채점 및 대시보드 자동 팝업
 ├── run_score_runs.bat     # [1-Click] 윈도우 탐색기 더블클릭 다회차 채점(--runs) 및 대시보드 브라우저 팝업
 ├── report.html            # 순수 HTML5 + 인라인 SVG/CSS 반응형 시각적 대시보드 리포트
 ├── run_manifest.md        # 실험 일시, 모델명, 양자화, 클라이언트 버전을 기록하는 장부
@@ -125,7 +126,7 @@ flip-test-pack/
 
 ### 4단계: 원클릭 자동 판정 및 대시보드 열람
 - **방법 1 (윈도우 탐색기 더블클릭 — 가장 빠르고 편리)**:
-  - 프로젝트 루트 또는 `flip-test-pack/` 디렉토리의 **`run_score.bat`를 더블클릭**합니다.
+  - 프로젝트 루트 또는 `flip-test-pack/` 디렉토리의 **`run_score.bat`**(또는 한국어 모드 **`run_score_ko.bat`**)를 더블클릭합니다.
   - Python 환경이 자동 감지되어 채점이 수행되고, **완료 즉시 기본 웹 브라우저에 시각적 대시보드(`report.html`)가 자동으로 열립니다.**
 - **방법 2 (터미널 CLI 수동 실행)**:
   ```bash

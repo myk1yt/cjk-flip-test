@@ -12,7 +12,7 @@ This repository provides a zero-external-dependency automated evaluation kit des
 
 You can run evaluations and launch visual dashboards directly from Windows Explorer with a simple double-click—no terminal or manual command entry required:
 
-1. **Double-click `run_score.bat`**:
+1. **Double-click `run_score.bat` (English default) or `run_score_ko.bat` (Korean mode)**:
    - Automatically detects your system Python environment (`py` or `python`) and executes a single-run evaluation immediately.
    - Once evaluation completes, the **interactive visual dashboard (`report.html`) featuring inline SVG graphs pops up automatically in your default web browser**.
    - The terminal window remains open (`pause`) so you can review console logs without premature closing.

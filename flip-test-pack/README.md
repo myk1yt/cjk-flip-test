@@ -33,7 +33,8 @@ In particular, **CJK (Chinese, Japanese, Korean) multilingual processing** exhib
 flip-test-pack/
 ├── README.md              # Setup, execution, evaluation procedures, control checklist, limitations, and assumptions (This document, English)
 ├── README_KO.md           # Korean Documentation (한국어 상세 가이드)
-├── run_score.bat          # [1-Click] Windows Explorer double-click single-run evaluation & auto-popup browser dashboard
+├── run_score.bat          # [1-Click] Windows Explorer double-click single-run evaluation & auto-popup browser dashboard (English default)
+├── run_score_ko.bat       # [1-Click] Windows Explorer double-click single-run evaluation in Korean mode
 ├── run_score_runs.bat     # [1-Click] Windows Explorer double-click multi-run evaluation (--runs) & auto-popup browser dashboard
 ├── report.html            # Pure HTML5 + inline SVG/CSS responsive visual dashboard report
 ├── run_manifest.md        # Experiment manifest logging timestamps, model IDs, quantization tiers, and client versions
@@ -126,7 +127,7 @@ The answer keys in this test pack were not manually transcribed or intuited; the
 
 ### Step 4: 1-Click Automated Evaluation & Dashboard Inspection
 - **Method 1 (Windows Explorer Double-Click — Fastest & Most Convenient)**:
-  - Double-click **`run_score.bat`** in either the repository root or the `flip-test-pack/` directory.
+  - Double-click **`run_score.bat`** (or **`run_score_ko.bat`** for Korean mode) in either the repository root or the `flip-test-pack/` directory.
   - The Python runtime is detected automatically, scoring executes, and **the visual dashboard (`report.html`) opens immediately in your default web browser.**
 - **Method 2 (Terminal CLI Manual Execution)**:
   ```bash
