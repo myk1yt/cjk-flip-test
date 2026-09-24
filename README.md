@@ -76,4 +76,4 @@ python score_results.py
 python score_results.py --runs
 ```
 
-상세한 준비·실행·판정 절차, 통제 체크리스트, 통계적 한계, 가정은 [flip-test-pack/README.md](flip-test-pack/README.md)를 참조하십시오.
+상세한 준비·실행·판정 절차, 통제 체크리스트, 통계적 한계, 가정은 [flip-test-pack/README.md](flip-test-pack/README.md) (영문 가이드: [flip-test-pack/README_EN.md](flip-test-pack/README_EN.md))를 참조하십시오.

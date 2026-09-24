@@ -31,6 +31,7 @@ VS Code 기반 LLM 보조 도구(Zoo Code 등)는 동일한 모델 가중치를 
 ```text
 flip-test-pack/
 ├── README.md              # 준비·실행·판정 절차, 통제 체크리스트, 통계적 한계, 가정 (본 문서)
+├── README_EN.md           # 영문 가이드 (English Documentation)
 ├── run_score.bat          # [1-Click] 윈도우 탐색기 더블클릭 단일 회차 채점 및 대시보드 브라우저 자동 팝업
 ├── run_score_runs.bat     # [1-Click] 윈도우 탐색기 더블클릭 다회차 채점(--runs) 및 대시보드 브라우저 팝업
 ├── report.html            # [신규] 순수 HTML5 + 인라인 SVG/CSS 반응형 시각적 대시보드 리포트
