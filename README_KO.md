@@ -38,8 +38,13 @@
 ## 📋 어떤 프롬프트를 넣어야 하는가? (프롬프트 파일 위치 및 복붙 가이드)
 
 > [!TIP]
-> ### 🎯 무엇을 복사하고 어디에 저장해야 하는가?
+> ### 🎯 무엇을 복사하고 어디에 저장해야 하는가? (퀵 가이드)
 > *"도대체 어떤 파일을 열어서 무슨 프롬프트를 복사해야 하는가?"* — 아래 두 가지 방식 중 하나를 선택하십시오. **방식 1 (메가 배치)**을 강력히 권장합니다.
+>
+> | 주입 방식 | 열어야 할 프롬프트 파일 경로 | 복사해야 할 내용 | 붙여넣을 대상 (Zoo Code) | 모델 응답 저장 경로 |
+> | :--- | :--- | :--- | :--- | :--- |
+> | **🌟 방식 1 (강력 권장)<br>1회 복붙 메가 배치** | **[`flip-test-pack/prompts/MEGA_BATCH.md`](flip-test-pack/prompts/MEGA_BATCH.md)** | **전체 선택 (Ctrl+A, Ctrl+C)**<br>8개 카테고리 40문항(298 체크) 통합본 | **`test_cjk_flip`** 모드 활성화된 Zoo Code 대화창에 1회 붙여넣기 | **[`flip-test-pack/responses/{프로바이더명}/MEGA.md`](flip-test-pack/responses/)**<br>*(전체 응답을 담은 단 1개 파일)* |
+> | **🔹 방식 2<br>개별 문항 모드** | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/T01.md)** ~ **[`T40.md`](flip-test-pack/prompts/T40.md)**<br>*(총 40개 개별 파일, 디렉토리: [**`flip-test-pack/prompts/`**](flip-test-pack/prompts/))* | 각 파일 내 **`## 복붙용 프롬프트`** 코드 블록 내부 내용만 복사 | **`test_cjk_flip`** 모드 활성화된 Zoo Code 대화창에 순차 주입 | **[`flip-test-pack/responses/{프로바이더명}/T01.md`](flip-test-pack/responses/)** ~ **`T40.md`**<br>*(문항별 개별 파일 총 40개)* |
 
 ### 🌟 방식 1 (강력 권장): 1회 복붙용 "메가 배치(Mega-Batch)" 프롬프트
 *8개 카테고리 40개 전체 문항(T01~T40, 298개 체크)을 단 1번의 복사-붙여넣기로 즉시 평가!*
@@ -58,7 +63,7 @@
 
 | 단계 | 행동 | 정확한 파일 경로 및 위치 |
 | :--- | :--- | :--- |
-| **1. 열어야 할 파일** | 각 문항 파일을 번호 순서대로 열기 | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/)** ~ **`T40.md`** (총 40개 파일) |
+| **1. 열어야 할 파일** | 각 문항 파일을 번호 순서대로 열기 | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/T01.md)** ~ **[`T40.md`](flip-test-pack/prompts/T40.md)** (총 40개 파일, 디렉토리: [**`flip-test-pack/prompts/`**](flip-test-pack/prompts/)) |
 | **2. 복사할 내용** | 각 파일 내부의 프롬프트 블록 복사 | 파일 내 **`## 복붙용 프롬프트`** 코드 블록 내부 내용만 복사 |
 | **3. 붙여넣을 위치** | Zoo Code 입력창에 순서대로 주입 | **`test_cjk_flip`** 커스텀 모드가 활성화된 대화창 |
 | **4. 응답 저장 위치** | 각 문항별 답변을 개별 파일로 저장 | **[`flip-test-pack/responses/{프로바이더명}/T01.md`](flip-test-pack/responses/)** ~ **`T40.md`** |

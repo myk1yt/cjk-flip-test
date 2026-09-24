@@ -38,8 +38,13 @@ To ensure strictly identical harness conditions and uncontaminated single-variab
 ## 📋 Which Prompts to Inject? (Prompt File Location & Copy Guide)
 
 > [!TIP]
-> ### 🎯 Exactly What to Copy & Where to Save
+> ### 🎯 Exactly What to Copy & Where to Save (Quick Reference)
 > *"Which file do I open and what prompt do I copy?"* — Choose either **Method 1 (Strongly Recommended)** or **Method 2** below:
+>
+> | Injection Mode | Source Prompt File to Open | What Exactly to Copy | Where to Paste | Where to Save Model Output |
+> | :--- | :--- | :--- | :--- | :--- |
+> | **🌟 Method 1 (Strongly Recommended)<br>1-Click Mega-Batch** | **[`flip-test-pack/prompts/MEGA_BATCH.md`](flip-test-pack/prompts/MEGA_BATCH.md)** | **Select All (Ctrl+A, Ctrl+C)**<br>Complete file contents (T01~T40, 298 checks) | Zoo Code chat box with **`test_cjk_flip`** mode active | **[`flip-test-pack/responses/{provider}/MEGA.md`](flip-test-pack/responses/)**<br>*(single file containing full model response)* |
+> | **🔹 Method 2<br>Individual Question Mode** | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/T01.md)** ~ **[`T40.md`](flip-test-pack/prompts/T40.md)**<br>*(40 files in [**`flip-test-pack/prompts/`**](flip-test-pack/prompts/))* | Content inside **`## 복붙용 프롬프트`** (`## Copy-Paste Prompt`) code block only | Zoo Code chat box with **`test_cjk_flip`** mode active | **[`flip-test-pack/responses/{provider}/T01.md`](flip-test-pack/responses/)** ~ **`T40.md`**<br>*(40 individual response files)* |
 
 ### 🌟 Method 1 (Strongly Recommended): 1-Click "Mega-Batch" Prompt
 *Inject all 40 questions across all 8 categories (298 checks) in a single copy-paste operation!*
@@ -58,7 +63,7 @@ To ensure strictly identical harness conditions and uncontaminated single-variab
 
 | Step | Action | Exact File Path / Location |
 | :--- | :--- | :--- |
-| **1. Source Files** | Open each question file sequentially | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/)** through **`T40.md`** (40 files) |
+| **1. Source Files** | Open each question file sequentially | **[`flip-test-pack/prompts/T01.md`](flip-test-pack/prompts/T01.md)** through **[`T40.md`](flip-test-pack/prompts/T40.md)** (40 files in [**`flip-test-pack/prompts/`**](flip-test-pack/prompts/)) |
 | **2. What to Copy** | Copy only the inner prompt block | The content inside the **`## 복붙용 프롬프트`** (`## Copy-Paste Prompt`) code block |
 | **3. Where to Paste** | Paste into Zoo Code one by one | Zoo Code chat box with **`test_cjk_flip`** mode active |
 | **4. Save Response** | Save each response separately to | **[`flip-test-pack/responses/{provider}/T01.md`](flip-test-pack/responses/)** ~ **`T40.md`** |

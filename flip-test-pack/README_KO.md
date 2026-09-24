@@ -98,14 +98,16 @@ flip-test-pack/
 
 ## 4. 단계별 실행 절차 (Step-by-Step Guide)
 
+### 📋 어떤 프롬프트를 넣어야 하는가? (프롬프트 파일 위치 및 복붙 가이드)
+
 > [!TIP]
-> ### 🎯 프롬프트 파일 위치 및 복사-붙여넣기 퀵 가이드
+> ### 🎯 무엇을 복사하고 어디에 저장해야 하는가? (퀵 가이드)
 > *"도대체 어떤 파일을 열어서 무슨 프롬프트를 복사해야 하는가?"* — 아래 두 가지 방식 중 하나를 선택하십시오. **방식 1 (메가 배치)**을 강력히 권장합니다.
 >
-> | 주입 방식 | 열어야 할 프롬프트 파일 경로 | 복사해야 할 내용 | 모델 응답 저장 경로 |
-> | :--- | :--- | :--- | :--- |
-> | **🌟 방식 1 (강력 권장)<br>1회 복붙 메가 배치** | **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)**<br>*(또는 `flip-test-pack/prompts/MEGA_BATCH.md`)* | **전체 선택 (Ctrl+A, Ctrl+C)**<br>8개 카테고리 40문항(298 체크) 통합본 | **[`responses/{프로바이더명}/MEGA.md`](responses/)**<br>*(전체 응답을 담은 단 1개 파일)* |
-> | **🔹 방식 2<br>개별 문항 모드** | **[`prompts/T01.md`](prompts/)** ~ **`T40.md`**<br>*(총 40개 개별 파일)* | 각 파일 내 **`## 복붙용 프롬프트`** 코드 블록 내부 내용만 복사 | **[`responses/{프로바이더명}/T01.md`](responses/)** ~ **`T40.md`**<br>*(문항별 개별 파일 총 40개)* |
+> | 주입 방식 | 열어야 할 프롬프트 파일 경로 | 복사해야 할 내용 | 붙여넣을 대상 (Zoo Code) | 모델 응답 저장 경로 |
+> | :--- | :--- | :--- | :--- | :--- |
+> | **🌟 방식 1 (강력 권장)<br>1회 복붙 메가 배치** | **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)**<br>*(저장소 루트 기준: `flip-test-pack/prompts/MEGA_BATCH.md`)* | **전체 선택 (Ctrl+A, Ctrl+C)**<br>8개 카테고리 40문항(298 체크) 통합본 | **`test_cjk_flip`** 모드 활성화된 Zoo Code 대화창에 1회 붙여넣기 | **[`responses/{프로바이더명}/MEGA.md`](responses/)**<br>*(전체 응답을 담은 단 1개 파일)* |
+> | **🔹 방식 2<br>개별 문항 모드** | **[`prompts/T01.md`](prompts/T01.md)** ~ **[`T40.md`](prompts/T40.md)**<br>*(총 40개 개별 파일, 디렉토리: [**`prompts/`**](prompts/))* | 각 파일 내 **`## 복붙용 프롬프트`** 코드 블록 내부 내용만 복사 | **`test_cjk_flip`** 모드 활성화된 Zoo Code 대화창에 순차 주입 | **[`responses/{프로바이더명}/T01.md`](responses/)** ~ **`T40.md`**<br>*(문항별 개별 파일 총 40개)* |
 
 ### 1단계: 통제 환경 준비 (Zoo Code Custom Mode 설정)
 1. 빈 폴더를 생성하고 VS Code로 엽니다 (전역 룰 파일 `.cursorrules`, `.windsurfrules`, `.gemini/rules` 등 간섭 요소를 배제한 순수 빈 작업 영역).
@@ -120,19 +122,19 @@ flip-test-pack/
 ### 2단계: 프로바이더 A 실행 (메가 배치 또는 개별 모드)
 - **방법 1 (강력 권장: 1회 복붙 메가 배치 모드)**:
   1. Zoo Code에서 **`test_cjk_flip`** 모드를 선택하고 대상 프로바이더(프로바이더 A)를 지정합니다.
-  2. **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)** (또는 `flip-test-pack/prompts/MEGA_BATCH.md`) 파일을 열고 전체 선택(**Ctrl+A, Ctrl+C**)하여 Zoo Code 입력창에 단 1회 붙여넣습니다.
+  2. **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)** (저장소 루트 기준: `flip-test-pack/prompts/MEGA_BATCH.md`) 파일을 열고 전체 선택(**Ctrl+A, Ctrl+C**)하여 Zoo Code 입력창에 단 1회 붙여넣습니다.
   3. 모델이 출력한 `=== [T01] ===` ~ `=== [T40] ===` 응답 전문을 복사하여:
-     **[`responses/{프로바이더명A}/MEGA.md`](responses/)** (또는 `flip-test-pack/responses/{프로바이더명A}/MEGA.md`) 단 1개 파일로 저장합니다.
+     **[`responses/{프로바이더명A}/MEGA.md`](responses/)** (저장소 루트 기준: `flip-test-pack/responses/{프로바이더명A}/MEGA.md`) 단 1개 파일로 저장합니다.
 - **방법 2 (전통적 개별 문항 모드)**:
   1. Zoo Code에서 **`test_cjk_flip`** 모드가 선택되어 있는지 확인하고 프로바이더 A를 지정합니다.
-  2. **[`prompts/T01.md`](prompts/)**부터 **`T40.md`**까지 총 40개 파일을 순서대로 열어, 각 파일 내부의 **`## 복붙용 프롬프트`** 코드 블록 내용만 복사하여 순차 주입합니다.
+  2. **[`prompts/T01.md`](prompts/T01.md)**부터 **[`T40.md`](prompts/T40.md)**까지 총 40개 파일([**`prompts/`**](prompts/))을 순서대로 열어, 각 파일 내부의 **`## 복붙용 프롬프트`** 코드 블록 내용만 복사하여 순차 주입합니다.
   3. 각 응답을 **[`responses/{프로바이더명A}/T01.md`](responses/)** ~ **`T40.md`** 경로에 각각 저장합니다.
 
 ### 3단계: 프로바이더 B 실행
 1. Zoo Code에서 **프로바이더 B**(예: `openrouter-q4` 또는 `provider_fp4`)로 프로필을 교체합니다.
 2. 2단계와 동일한 방법으로 복사-붙여넣기를 수행하여 저장합니다:
    - **방식 1 선택 시**: **[`prompts/MEGA_BATCH.md`](prompts/MEGA_BATCH.md)**를 복사하여 **[`responses/{프로바이더명B}/MEGA.md`](responses/)**에 저장.
-   - **방식 2 선택 시**: **[`prompts/T01.md`](prompts/)** ~ **`T40.md`**를 순차 복사하여 **[`responses/{프로바이더명B}/T01.md`](responses/)** ~ **`T40.md`**에 저장.
+   - **방식 2 선택 시**: **[`prompts/T01.md`](prompts/T01.md)** ~ **[`T40.md`](prompts/T40.md)**([**`prompts/`**](prompts/))를 순차 복사하여 **[`responses/{프로바이더명B}/T01.md`](responses/)** ~ **`T40.md`**에 저장.
 *(시간대, 시스템 부하 등 외부 변동을 최소화하기 위해 연속으로 진행하는 것을 권장합니다)*
 
 ### 4단계: 원클릭 자동 판정 및 대시보드 열람
