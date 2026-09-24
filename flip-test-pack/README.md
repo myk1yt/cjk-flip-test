@@ -50,7 +50,7 @@ flip-test-pack/
 │   ├── sample_fp8/        # [예시] 무손실 FP8 레퍼런스 응답 (MEGA.md + T01~T40.md, 100% 통과)
 │   └── sample_fp4/        # [예시] FP4급 양자화 손실 재현 응답 (MEGA.md + T01~T40.md, 97.23% 통과)
 └── tests/
-    └── test_scorer.py     # 채점기 자체 검증 유닛 테스트 (41개 테스트, 메가 배치/토큰절단/HTML생성 전수 완비)
+    └── test_scorer.py     # 채점기 자체 검증 유닛 테스트 (56개 테스트, 메가 배치/토큰절단/공정성회귀/HTML생성 전수 완비)
 ```
 
 ---
@@ -97,7 +97,7 @@ flip-test-pack/
 ### 1단계: 통제 환경 준비 (Zoo Code Custom Mode 설정)
 1. 빈 폴더를 생성하고 VS Code로 엽니다 (전역 룰 파일 `.cursorrules`, `.windsurfrules`, `.gemini/rules` 등 간섭 요소를 배제한 순수 빈 작업 영역).
 2. Zoo Code 확장을 실행하고, 전용 Custom Mode를 신규 생성합니다:
-   - **모드 이름**: `test_cjk_flip`
+   - **모드 이름**: `test_cjk_flip` (또는 `test_cjp_flip`)
    - **Role Definition (역할 정의)**: 아래 영문 단 1줄만 정확히 입력합니다:
      > `Perform only the given task and provide no unnecessary explanations.`
    - **도구 권한(Tools/MCP)**: File Edit, Write, Terminal, MCP 등 모든 도구 사용 권한을 **전부 해제(`None`)**하여 모델이 임의로 파일을 수정하거나 스크립트를 생성하지 못하도록 통제합니다.
@@ -106,12 +106,14 @@ flip-test-pack/
 
 ### 2단계: 프로바이더 A 실행 (메가 배치 또는 개별 모드)
 - **방법 1 (권장: 1회 복붙 메가 배치 모드)**:
-  1. `flip-test-pack/prompts/MEGA_BATCH.md` 파일 전문을 복사하여 Zoo Code 입력창에 1회 붙여넣습니다.
-  2. 모델이 출력한 `=== [T01] ===` ~ `=== [T40] ===` 응답 전문을 복사하여:
+  1. Zoo Code에서 `test_cjk_flip` 모드를 선택하고 대상 프로바이더(프로바이더 A)를 지정합니다.
+  2. `flip-test-pack/prompts/MEGA_BATCH.md` 파일 전문을 복사하여 Zoo Code 입력창에 1회 붙여넣습니다.
+  3. 모델이 출력한 `=== [T01] ===` ~ `=== [T40] ===` 응답 전문을 복사하여:
      `flip-test-pack/responses/{provider-a}/MEGA.md` 파일 1개로 저장합니다.
 - **방법 2 (전통적 개별 모드)**:
-  1. `flip-test-pack/prompts/` 폴더의 `T01.md`부터 `T40.md`까지 지시된 번호 순서대로 복사-붙여넣기합니다.
-  2. 각 응답을 `flip-test-pack/responses/{provider-a}/T01.md` ~ `T40.md` 경로에 저장합니다.
+  1. Zoo Code에서 `test_cjk_flip` 모드가 선택되어 있는지 확인하고 프로바이더 A를 지정합니다.
+  2. `flip-test-pack/prompts/` 폴더의 `T01.md`부터 `T40.md`까지 지시된 번호 순서대로 복사-붙여넣기합니다.
+  3. 각 응답을 `flip-test-pack/responses/{provider-a}/T01.md` ~ `T40.md` 경로에 저장합니다.
 
 ### 3단계: 프로바이더 B 실행
 1. Zoo Code에서 **프로바이더 B**(예: `openrouter-q4` 또는 `provider_fp4`)로 프로필을 교체합니다.
@@ -208,7 +210,7 @@ python score_results.py --master checks_master.json --responses responses --outp
 
 ### 채점기 자체 검증 유닛 테스트 실행
 ```bash
-# 41개 유닛 테스트 (메가 배치, 토큰 절단 진단, HTML 대시보드 생성 전수 포함) 실행
+# 56개 유닛 테스트 (메가 배치, 토큰 절단 진단, 공정성 회귀, HTML 대시보드 생성 전수 포함) 실행
 python tests/test_scorer.py
 ```
 *(모든 테스트가 100% 통과(OK)되어야 키트의 무결성이 보증됩니다)*

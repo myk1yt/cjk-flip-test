@@ -25,7 +25,7 @@
 
 동일 하네스 조건과 무간섭 독립 변인 통제를 위해 Zoo Code에 아래와 같이 전용 커스텀 모드를 설정합니다:
 
-1. **Custom Mode 생성**: 모드 이름을 **`test_cjk_flip`**으로 설정합니다.
+1. **Custom Mode 생성**: 모드 이름을 **`test_cjk_flip`**(또는 `test_cjp_flip`)으로 설정합니다.
 2. **Role Definition (역할 정의)**: 사족이나 임의 개입을 원천 차단하기 위해 아래 영문 단 1줄만 정확히 입력합니다:
    > `Perform only the given task and provide no unnecessary explanations.`
 3. **Tools (도구 권한)**: 모든 도구 권한(File Edit, Write, Terminal, MCP 등)을 **전부 해제(`None`)**하여 모델이 임의로 파일을 수정하거나 스크립트를 생성하지 못하도록 통제합니다.
@@ -64,7 +64,7 @@
 # flip-test-pack 디렉토리로 이동
 cd flip-test-pack
 
-# 채점기 자체 검증 유닛 테스트 (41개 전수 통과)
+# 채점기 자체 검증 유닛 테스트 (56개 전수 통과)
 python tests/test_scorer.py
 
 # 단일 회차 채점 및 대시보드 생성

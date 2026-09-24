@@ -8,10 +8,11 @@
 ## 실험 기본 환경
 - **실험명**: Zoo Code Custom Mode용 CJK-Flip 테스트 팩
 - **하네스/클라이언트**: VS Code + Zoo Code Extension
-- **Custom Mode 이름**: `flip-test`
-- **통제 시스템 프롬프트**: `"주어진 작업만 수행하고 불필요한 설명은 하지 않는다."` (또는 완전 빈칸)
+- **Custom Mode 이름**: `test_cjk_flip` (또는 `test_cjp_flip`)
+- **Role Definition (역할 정의)**: `Perform only the given task and provide no unnecessary explanations.`
 - **Temperature 설정**: `0.0` (지원되는 프로바이더에 한함)
-- **도구 사용 (Tools)**: `None` (완전 비활성화)
+- **도구 사용 (Tools)**: `None` (모든 Tool/MCP/터미널/파일수정 완전 비활성화)
+- **단일 독립 변인**: 프로바이더 설정(Provider Profile / Quantization)만 교체
 
 ---
 
@@ -29,6 +30,6 @@
 
 ## 점검 체크리스트 (각 실행 전 필수 확인)
 - [ ] 작업 디렉토리에 숨겨진 `.cursorrules`, `.windsurfrules`, `.gemini/rules`, `AGENTS.md` 등 전역 지시문 파일이 없는가?
-- [ ] Zoo Code의 'flip-test' 모드 외에 다른 시스템 프롬프트가 개입하지 않았는가?
-- [ ] 프로바이더 간 전환 시 동일한 순서(T01 -> T40)로 정확히 복사-붙여넣기 하였는가?
-- [ ] 모델 응답에서 ⟪ ... ⟫ 마커가 포함된 원문을 누락 없이 `responses/{provider}/Txx.md`로 저장하였는가?
+- [ ] Zoo Code의 'test_cjk_flip' 모드(Role: `Perform only the given task and provide no unnecessary explanations.`, Tools: None) 외에 다른 시스템 프롬프트가 개입하지 않았는가?
+- [ ] 프로바이더 간 전환 시 동일한 순서(MEGA_BATCH 1회 또는 T01 -> T40 순차)로 정확히 복사-붙여넣기 하였는가?
+- [ ] 모델 응답에서 ⟪ ... ⟫ 마커가 포함된 원문을 누락 없이 `responses/{provider}/` 디렉토리(MEGA.md 또는 Txx.md)에 저장하였는가?
